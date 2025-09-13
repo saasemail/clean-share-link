@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Clean Share Link</title>
+  <link rel="stylesheet" href="styles.css" />
+  <meta name="description" content="Remove UTM and tracking junk from URLs before sharing." />
+</head>
+<body>
+  <header class="site-header">
+    <div class="brand">
+      <div class="logo-dot" aria-hidden="true"></div>
+      <h1>Clean Share Link</h1>
+    </div>
+    <button id="proBadge" class="badge-pro" aria-label="Pro info">Pro</button>
+  </header>
+
+  <main class="wrap">
+    <section class="card">
+      <h2 class="card-title">Paste a link, get it clean</h2>
+      <p class="muted">
+        Remove UTM/FBCLID/GCLID and other tracking parameters. Everything happens locally in your browser.
+      </p>
+
+      <label for="urlIn" class="label">URL to clean</label>
+      <textarea id="urlIn" class="input" rows="3" placeholder="https://example.com/page?utm_source=x&gclid=..."></textarea>
+
+      <div class="toggles">
+        <label class="toggle">
+          <input type="checkbox" id="forceHttps" checked />
+          <span>Force HTTPS</span>
+        </label>
+        <label class="toggle">
+          <input type="checkbox" id="keepParams" checked />
+          <span>Keep site params (remove only tracking junk)</span>
+        </label>
+      </div>
+
+      <div class="actions">
+        <button id="cleanBtn" class="btn primary">Clean</button>
+        <button id="resetBtn" class="btn subtle">Reset</button>
+        <div class="spacer"></div>
+        <div id="quota" class="quota">3 free cleans left today</div>
+      </div>
+
+      <div id="status" class="status" role="status" aria-live="polite"></div>
+
+      <div class="result">
+        <label for="urlOut" class="label">Clean URL</label>
+        <textarea id="urlOut" class="output" rows="2" readonly placeholder="Your clean URL will appear here"></textarea>
+        <div class="result-actions">
+          <button id="copyBtn" class="btn">Copy</button>
+          <button id="openBtn" class="btn">Open</button>
+        </div>
+      </div>
+
+      <hr class="sep" />
+
+      <!-- GHOST PRO FEATURE -->
+      <div class="batch pro-locked" aria-disabled="true">
+        <div class="batch-head">
+          <h3 class="batch-title">Batch (Pro)</h3>
+          <span class="badge-lock" aria-hidden="true">Pro</span>
+        </div>
+        <p class="muted small">
+          Paste 10–100 URLs (one per line) and clean them all at once. This feature is available in Pro.
+        </p>
+        <textarea id="batchIn" class="input ghost" rows="4" placeholder="One URL per line…"></textarea>
+        <div class="result-actions">
+          <button id="batchCleanBtn" class="btn ghost">Clean Batch</button>
+          <button id="batchExportBtn" class="btn ghost">Export CSV</button>
+        </div>
+      </div>
+    </section>
+
+    <footer class="foot muted">
+      <span>Local-only • No tracking • No external requests</span>
+    </footer>
+  </main>
+
+  <!-- Pro Modal -->
+  <div id="modalBackdrop" class="modal-backdrop" hidden></div>
+  <dialog id="proModal" class="modal" aria-labelledby="modalTitle">
+    <h3 id="modalTitle">Unlock Pro</h3>
+    <p class="muted">
+      You’re on the free version. Pro gives you unlimited cleans, custom rule lists, and batch mode.
+    </p>
+    <ul class="list">
+      <li>Unlimited cleans</li>
+      <li>Custom removal rules</li>
+      <li>Batch: paste 10–100 links</li>
+    </ul>
+    <div class="modal-actions">
+      <button id="closeModal" class="btn">Close</button>
+    </div>
+  </dialog>
+
+  <script src="ui.js"></script>
+</body>
+</html>
