@@ -1,5 +1,5 @@
 // Clean Share Link — single-file logic, no deps
-// v1.3: daily free limit = 3, 5s cooldown; ghost Batch (Pro) CTA
+// v1.4: FastSpring popup + Pro unlock; daily free limit = 3, 5s cooldown
 
 (function(){
   const el = (id) => document.getElementById(id);
@@ -19,6 +19,7 @@
   const proModal = el('proModal');
   const modalBackdrop = el('modalBackdrop');
   const closeModal = el('closeModal');
+  const upgradeProBtn = el('upgradePro');
 
   // Ghost batch controls (Pro-only)
   const batchIn = el('batchIn');
@@ -30,6 +31,9 @@
   const COOLDOWN_MS = 5000;                // 5 seconds between cleans
   const STORAGE_KEY = 'csl_quota_v1';
   const LAST_CLEAN_KEY = 'csl_last_ts_v1';
+  const PRO_KEY = 'csl_pro_v1';
+
+  let isPro = false;
 
   // Tracking junk list
   const TRACK_EXACT = new Set([
@@ -72,6 +76,7 @@
     return next;
   }
   function remainingQuota(){
+    if (isPro) return Infinity;
     const q = readQuota();
     return Math.max(0, DAILY_LIMIT - q.count);
   }
@@ -85,6 +90,7 @@
     try { localStorage.setItem(LAST_CLEAN_KEY, String(ts)); } catch {}
   }
   function cooldownLeftMs(){
+    if (isPro) return 0;
     const last = readLastCleanTs();
     const delta = Date.now() - last;
     const left = COOLDOWN_MS - delta;
@@ -92,6 +98,10 @@
   }
 
   function updateQuotaUI(){
+    if (isPro) {
+      quota.textContent = 'Pro: unlimited';
+      return;
+    }
     const left = remainingQuota();
     quota.textContent = `${left} free cleans left today`;
   }
@@ -173,7 +183,19 @@
     };
   }
 
+  function unlockProUI(){
+    isPro = true;
+    updateQuotaUI();
+    // ukloni lock sa batch sekcije
+    const batch = document.querySelector('.batch.pro-locked');
+    if (batch) batch.classList.remove('pro-locked');
+    // zatvori modal ako je otvoren
+    try { closePro(); } catch {}
+    showStatus('Pro unlocked. Enjoy!', 'ok');
+  }
+
   // Wire up
+  isPro = (localStorage.getItem(PRO_KEY) === '1');
   updateQuotaUI();
   showStatus('Ready.', 'ok');
 
@@ -187,7 +209,7 @@
     }
 
     // Quota check
-    if (remainingQuota() <= 0){
+    if (!isPro && remainingQuota() <= 0){
       showStatus('Free limit reached for today.', 'warn');
       return;
     }
@@ -217,9 +239,11 @@
       showStatus('Already clean · nothing to remove.', 'warn');
     }
 
-    // Successful attempt → mark time + increment quota
-    writeLastCleanTs(Date.now());
-    incrementQuota();
+    // Successful attempt → mark time + increment quota (free only)
+    if (!isPro) {
+      writeLastCleanTs(Date.now());
+      incrementQuota();
+    }
   });
 
   resetBtn.addEventListener('click', () => {
@@ -267,11 +291,13 @@
   closeModal.addEventListener('click', closePro);
   modalBackdrop.addEventListener('click', closePro);
 
-  // Any interaction with ghost batch opens Pro modal
+  // Any interaction with ghost batch opens Pro modal (kad korisnik nije Pro)
   const ghostHit = (e) => {
-    e.preventDefault();
-    openPro();
-    showStatus('Batch mode is a Pro feature.', 'warn');
+    if (!isPro) {
+      e.preventDefault();
+      openPro();
+      showStatus('Batch mode is a Pro feature.', 'warn');
+    }
   };
   if (batchIn) batchIn.addEventListener('focus', ghostHit);
   if (batchCleanBtn) batchCleanBtn.addEventListener('click', ghostHit);
@@ -284,4 +310,12 @@
     }
   });
 
+  // FastSpring popup callback (postavljen preko data-popup-closed u index.html)
+  window.onFSPopupClosed = function(evt){
+    // Ako je orderReference prisutan, kupovina je prošla
+    if (evt && evt.orderReference) {
+      try { localStorage.setItem(PRO_KEY, '1'); } catch {}
+      unlockProUI();
+    }
+  };
 })();

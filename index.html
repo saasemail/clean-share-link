@@ -6,6 +6,15 @@
   <title>Clean Share Link</title>
   <link rel="stylesheet" href="styles.css" />
   <meta name="description" content="Remove UTM and tracking junk from URLs before sharing." />
+
+  <!-- FastSpring popup (hosted checkout) -->
+  <script
+    id="fsc-api"
+    src="https://sbl.onfastspring.com/sbl/1.0.5/fastspring-builder.min.js"
+    type="text/javascript"
+    data-storefront="cleansharelink.test.onfastspring.com/popup-cleansharelink"
+    data-popup-closed="onFSPopupClosed">
+  </script>
 </head>
 <body>
   <header class="site-header">
@@ -92,6 +101,14 @@
       <li>Batch: paste 10–100 links</li>
     </ul>
     <div class="modal-actions">
+      <!-- FastSpring: add-to-cart + open checkout in one click -->
+      <button
+        id="upgradePro"
+        class="btn primary"
+        data-fsc-item-path-value="cslpro"
+        data-fsc-action="Add, Checkout">
+        Upgrade to Pro — $5.99/mo
+      </button>
       <button id="closeModal" class="btn">Close</button>
     </div>
   </dialog>
