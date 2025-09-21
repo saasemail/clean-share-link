@@ -27,8 +27,8 @@
   const batchExportBtn = el('batchExportBtn');
 
   // Free quota (soft, local-only)
-  const DAILY_LIMIT = 3;                   // free/day
-  const COOLDOWN_MS = 5000;                // 5 seconds between cleans
+  const DAILY_LIMIT = 3;
+  const COOLDOWN_MS = 5000;
   const STORAGE_KEY = 'csl_quota_v1';
   const LAST_CLEAN_KEY = 'csl_last_ts_v1';
   const PRO_KEY = 'csl_pro_v1';
@@ -42,7 +42,6 @@
   ]);
   const TRACK_PREFIX = ['utm_', 'oly_', 'ga_'];
 
-  // Allow-list when keepParams = false
   const ALLOW_WHEN_STRICT = new Set(['q','query','s','search','id','page','lang']);
 
   // Utils
@@ -122,7 +121,6 @@
   function normalizeUrlInput(raw){
     let str = (raw || '').trim();
     if (!str) return '';
-    // If missing protocol, assume https://
     if (!/^https?:\/\//i.test(str)){
       str = 'https://' + str;
     }
@@ -134,7 +132,6 @@
   }
 
   function cleanURL(input, opts){
-    // Returns { ok:boolean, before:string, after:string, changed:boolean, reason?:string }
     const normalized = normalizeUrlInput(input);
     const u0 = tryParseURL(normalized);
     if (!u0){
@@ -143,12 +140,10 @@
 
     const u = new URL(u0.href);
 
-    // Force https
     if (opts.forceHttps && u.protocol === 'http:'){
       u.protocol = 'https:';
     }
 
-    // Params handling
     const sp = u.searchParams;
 
     if (opts.keepParams){
@@ -175,21 +170,14 @@
     const before = u0.href;
     const after = u.href;
 
-    return {
-      ok:true,
-      before,
-      after,
-      changed: before !== after
-    };
+    return { ok:true, before, after, changed: before !== after };
   }
 
   function unlockProUI(){
     isPro = true;
     updateQuotaUI();
-    // ukloni lock sa batch sekcije
     const batch = document.querySelector('.batch.pro-locked');
     if (batch) batch.classList.remove('pro-locked');
-    // zatvori modal ako je otvoren
     try { closePro(); } catch {}
     showStatus('Pro unlocked. Enjoy!', 'ok');
   }
@@ -200,7 +188,6 @@
   showStatus('Ready.', 'ok');
 
   cleanBtn.addEventListener('click', () => {
-    // Cooldown check
     const leftMs = cooldownLeftMs();
     if (leftMs > 0){
       const sec = Math.ceil(leftMs / 1000);
@@ -208,7 +195,6 @@
       return;
     }
 
-    // Quota check
     if (!isPro && remainingQuota() <= 0){
       showStatus('Free limit reached for today.', 'warn');
       return;
@@ -239,7 +225,6 @@
       showStatus('Already clean · nothing to remove.', 'warn');
     }
 
-    // Successful attempt → mark time + increment quota (free only)
     if (!isPro) {
       writeLastCleanTs(Date.now());
       incrementQuota();
@@ -276,14 +261,16 @@
     window.open(val, '_blank', 'noopener,noreferrer');
   });
 
-  // Pro modal + ghost batch
+  // Pro modal
   function openPro(){
     modalBackdrop.hidden = false;
     if (typeof proModal.showModal === 'function') proModal.showModal();
     else proModal.style.display = 'block';
   }
   function closePro(){
+    // hard-hide sve što može da pravi overlay
     modalBackdrop.hidden = true;
+    modalBackdrop.style.display = 'none';
     if (typeof proModal.close === 'function') proModal.close();
     else proModal.style.display = 'none';
   }
@@ -291,10 +278,19 @@
   closeModal.addEventListener('click', closePro);
   modalBackdrop.addEventListener('click', closePro);
 
-  // NEW: zatvori naš modal odmah kad krene FS checkout (sprečava overlay konflikt)
-  if (upgradeProBtn) upgradeProBtn.addEventListener('click', closePro);
+  // ZATVARANJE PRE FS POPUP-a: pointerdown + mousedown + click (+ microtask fallback)
+  if (upgradeProBtn){
+    const preClose = () => { closePro(); };
+    upgradeProBtn.addEventListener('pointerdown', preClose, {capture:true});
+    upgradeProBtn.addEventListener('mousedown', preClose, {capture:true});
+    upgradeProBtn.addEventListener('click', () => {
+      closePro();
+      // u slučaju da FS otvara popup u sledećem ticku
+      setTimeout(closePro, 0);
+    }, {capture:true});
+  }
 
-  // Any interaction with ghost batch opens Pro modal (kad korisnik nije Pro)
+  // Ghost batch → otvaraj Pro modal
   const ghostHit = (e) => {
     if (!isPro) {
       e.preventDefault();
@@ -313,9 +309,8 @@
     }
   });
 
-  // FastSpring popup callback (postavljen preko data-popup-closed u index.html)
+  // FastSpring popup callback
   window.onFSPopupClosed = function(evt){
-    // Ako je orderReference prisutan, kupovina je prošla
     if (evt && evt.orderReference) {
       try { localStorage.setItem(PRO_KEY, '1'); } catch {}
       unlockProUI();
