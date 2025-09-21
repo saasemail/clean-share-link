@@ -291,6 +291,9 @@
   closeModal.addEventListener('click', closePro);
   modalBackdrop.addEventListener('click', closePro);
 
+  // NEW: zatvori naš modal odmah kad krene FS checkout (sprečava overlay konflikt)
+  if (upgradeProBtn) upgradeProBtn.addEventListener('click', closePro);
+
   // Any interaction with ghost batch opens Pro modal (kad korisnik nije Pro)
   const ghostHit = (e) => {
     if (!isPro) {

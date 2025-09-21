@@ -100,16 +100,19 @@
       <li>Custom removal rules</li>
       <li>Batch: paste 10–100 links</li>
     </ul>
-    <div class="modal-actions">
+    <div class="modal-actions" style="flex-wrap:wrap;gap:10px">
       <!-- FastSpring: add-to-cart + open checkout in one click -->
       <button
         id="upgradePro"
         class="btn primary"
         data-fsc-item-path-value="cslpro"
         data-fsc-action="Add, Checkout">
-        Upgrade to Pro — $5.99/mo
+        Upgrade to Pro — <span class="fs-price" data-fsc-item-path-value="cslpro" style="opacity:.85">…</span>
       </button>
       <button id="closeModal" class="btn">Close</button>
+      <div class="muted small" style="width:100%;margin-top:-2px">
+        Final price appears in your local currency in checkout and may include taxes.
+      </div>
     </div>
   </dialog>
 
