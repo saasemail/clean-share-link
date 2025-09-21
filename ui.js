@@ -33,9 +33,7 @@
   const LAST_CLEAN_KEY = 'csl_last_ts_v1';
   const PRO_KEY = 'csl_pro_v1';
 
-  // NEW (heuristic safety): beležimo vreme pokretanja checkout-a
-  const CHECKOUT_TS_KEY = 'csl_checkout_ts';
-  const CHECKOUT_VALID_MS = 15 * 60 * 1000; // 15 min
+  // (REMOVED heuristic keys that caused false unlocks)
 
   let isPro = false;
 
@@ -313,7 +311,7 @@
     window.open(val, '_blank', 'noopener,noreferrer');
   });
 
-  // === BATCH CLEAN (Pro) — DODATO ===
+  // === BATCH CLEAN (Pro) — ostaje kako je ===
   function autoResizeBatch(){
     if (!batchIn) return;
     batchIn.style.height = 'auto';
@@ -396,7 +394,7 @@
   }
   if (batchCleanBtn) batchCleanBtn.addEventListener('click', handleBatchClean);
   if (batchExportBtn) batchExportBtn.addEventListener('click', handleBatchExport);
-  // === KRAJ BATCH DODATKA ===
+  // === KRAJ BATCH BLOKA ===
 
   // Pro modal
   function openPro(){
@@ -425,7 +423,7 @@
     return window.fastspring;
   }
 
-  // REG: SBL događaji (ako postoje) + beleženje checkout starta
+  // REG: SBL događaji (jasni signali uspešne kupovine)
   function registerFSEvents(fs){
     if (!fs || !fs.builder || !fs.builder.on) return;
     const fire = ()=> unlockProUI();
@@ -438,20 +436,10 @@
     });
   }
 
-  // NEW: heuristika — zabeleži da smo baš sada otvorili checkout
-  function markCheckoutStarted(){
-    try { localStorage.setItem(CHECKOUT_TS_KEY, String(Date.now())); } catch {}
-  }
-  function recentlyStartedCheckout(){
-    const ts = Number(localStorage.getItem(CHECKOUT_TS_KEY) || 0);
-    return ts && (Date.now() - ts) <= CHECKOUT_VALID_MS;
-  }
-
   async function openFSCheckout(){
     try{
       const fs = await waitForFS();
       registerFSEvents(fs);
-      markCheckoutStarted(); // <<<<<< zabeleži start
       try{ fs.builder.reset(); }catch{}
       fs.builder.add('cslpro');
       fs.builder.checkout();
@@ -477,18 +465,6 @@
     upgradeProBtn.addEventListener('click',       trigger, {capture:true});
   }
 
-  // Ghost batch → Pro modal
-  const ghostHit = (e) => {
-    if (!isPro) {
-      e.preventDefault();
-      openPro();
-      showStatus('Batch mode is a Pro feature.', 'warn');
-    }
-  };
-  if (batchIn) batchIn.addEventListener('focus', ghostHit);
-  if (batchCleanBtn) batchCleanBtn.addEventListener('click', ghostHit);
-  if (batchExportBtn) batchExportBtn.addEventListener('click', ghostHit);
-
   // QoL: Ctrl+Enter to clean
   urlIn.addEventListener('keydown', (e) => {
     if (e.ctrlKey && e.key === 'Enter'){
@@ -496,17 +472,15 @@
     }
   });
 
-  // FastSpring popup callback (fallback + heuristika)
+  // FastSpring popup callback (fallback – sada samo “hard” signal)
   window.onFSPopupClosed = function(evt){
     reattachModal();
-    // Ako FS ne pošalje orderReference, otključaj ako je popup zatvoren ubrzo nakon starta checkout-a
-    const successSignal = !!(evt && (evt.orderReference || evt.completed === true || evt.success === true));
-    if (successSignal || recentlyStartedCheckout()) {
+    if (evt && (evt.orderReference || evt.completed === true || evt.success === true)) {
       unlockProUI();
     }
   };
 
-  // postMessage iz FS (fallback + heuristika)
+  // postMessage iz FS (samo uz jasan signal)
   window.addEventListener('message', (e) => {
     try{
       const origin = String(e.origin || '');
@@ -516,7 +490,7 @@
       const isFS =
         /\.onfastspring\.com$/.test(host) ||
         /\.fastspring\.com$/.test(host)   ||
-        /fastspring/i.test(host); // zaštitna mreža
+        /fastspring/i.test(host);
 
       if (!isFS) return;
 
@@ -530,10 +504,8 @@
         (d.events && d.events[0] && d.events[0].data && d.events[0].data.orderReference);
 
       const looksDone =
-        ref ||
-        /order|subscription/i.test(type) ||
-        /checkout.*(complete|success)/i.test(type) ||
-        recentlyStartedCheckout();
+        !!ref ||
+        /(order|subscription).*completed|subscription\.activated|checkout\.completed/i.test(type);
 
       if (looksDone) unlockProUI();
     }catch{}
