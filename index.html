@@ -66,14 +66,14 @@
 
       <hr class="sep" />
 
-      <!-- GHOST PRO FEATURE -->
+      <!-- BATCH (Pro feature when locked) -->
       <div class="batch pro-locked" aria-disabled="true">
         <div class="batch-head">
-          <h3 class="batch-title">Batch (Pro)</h3>
+          <h3 class="batch-title">Batch</h3>
           <span class="badge-lock" aria-hidden="true">Pro</span>
         </div>
         <p class="muted small">
-          Paste 10–100 URLs (one per line) and clean them all at once. This feature is available in Pro.
+          Paste 10–100 URLs (one per line) and clean them all at once.
         </p>
         <textarea id="batchIn" class="input ghost" rows="4" placeholder="One URL per line…"></textarea>
         <div class="result-actions">
@@ -112,6 +112,23 @@
       <button id="closeModal" class="btn">Close</button>
     </div>
   </dialog>
+
+  <!-- mali helper: čim je Pro u LS-u, sakrij zeleni bedž (dodaje .is-pro na <html>) -->
+  <script>
+    (function(){
+      function apply(){
+        try{
+          if (localStorage.getItem('csl_pro_v1') === '1') {
+            document.documentElement.classList.add('is-pro');
+          }
+        }catch{}
+      }
+      apply();
+      // odradi ponovo kad dođe poruka iz FS popupa ili kad se LS promeni
+      window.addEventListener('message', apply);
+      window.addEventListener('storage', apply);
+    })();
+  </script>
 
   <script src="ui.js"></script>
 </body>

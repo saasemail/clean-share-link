@@ -215,7 +215,7 @@
     isPro = true;
     updateQuotaUI();
     const batch = document.querySelector('.batch.pro-locked');
-    if (batch) batch.classList.remove('pro-locked');
+    if (batch) batch.classList.remove('pro-locked'); // skini ghost + sakrij "Pro" bedž u batchu
     try { closePro(); } catch {}
     showStatus('Pro unlocked. Enjoy!', 'ok');
   }
@@ -223,6 +223,10 @@
   // Wire up
   isPro = (localStorage.getItem(PRO_KEY) === '1');
   updateQuotaUI();
+  if (isPro) {
+    const batch = document.querySelector('.batch.pro-locked');
+    if (batch) batch.classList.remove('pro-locked');
+  }
   showStatus('Ready.', 'ok');
 
   cleanBtn.addEventListener('click', () => {
@@ -372,7 +376,7 @@
     }
   });
 
-  // FastSpring popup callback
+  // FastSpring popup callback (fallback)
   window.onFSPopupClosed = function(evt){
     reattachModal();
     if (evt && evt.orderReference) {
@@ -380,4 +384,23 @@
       unlockProUI();
     }
   };
+
+  // NEW: hvataj FastSpring postMessage događaje (stabilnije)
+  window.addEventListener('message', (e) => {
+    try{
+      const origin = String(e.origin || '');
+      // dozvoli poznate FS domene (test i prod)
+      const isFS = /fastspring\.com$/.test(new URL(origin).hostname);
+      if (!isFS) return;
+
+      const d = e.data || {};
+      const type = d.type || d.event || d.fsEvent || (d.events && d.events[0] && d.events[0].type) || '';
+      const ref  = d.orderReference || (d.data && d.data.orderReference) || (d.events && d.events[0] && d.events[0].data && d.events[0].data.orderReference);
+
+      if (ref && /order|subscription/i.test(type)) {
+        try { localStorage.setItem(PRO_KEY, '1'); } catch {}
+        unlockProUI();
+      }
+    }catch{}
+  });
 })();
