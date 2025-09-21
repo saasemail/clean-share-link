@@ -238,6 +238,7 @@
   }
   showStatus('Ready.', 'ok');
 
+  // === SINGLE CLEAN ===
   cleanBtn.addEventListener('click', () => {
     const leftMs = cooldownLeftMs();
     if (leftMs > 0){
@@ -311,6 +312,91 @@
     }
     window.open(val, '_blank', 'noopener,noreferrer');
   });
+
+  // === BATCH CLEAN (Pro) — DODATO ===
+  function autoResizeBatch(){
+    if (!batchIn) return;
+    batchIn.style.height = 'auto';
+    const max = Math.min(600, batchIn.scrollHeight);
+    batchIn.style.height = Math.max(120, max) + 'px';
+  }
+
+  function getBatchLines(){
+    return (batchIn?.value || '')
+      .split(/\r?\n/)
+      .map(s => s.trim())
+      .filter(Boolean);
+  }
+
+  function handleBatchClean(){
+    if (!isPro) {
+      openPro();
+      showStatus('Batch mode is a Pro feature.', 'warn');
+      return;
+    }
+    const lines = getBatchLines();
+    if (!lines.length){
+      showStatus('Paste 1+ URLs (one per line) to clean.', 'err');
+      return;
+    }
+    const opts = { forceHttps: !!forceHttps.checked, keepParams: !!keepParams.checked };
+    const results = lines.map((line) => {
+      const r = cleanURL(line, opts);
+      return r.ok ? r.after : line;
+    });
+    batchIn.value = results.join('\n');
+    autoResizeBatch();
+    showStatus(`Batch cleaned: ${results.length} URL${results.length>1?'s':''}.`, 'ok');
+  }
+
+  function handleBatchExport(){
+    if (!isPro) {
+      openPro();
+      showStatus('Batch export is a Pro feature.', 'warn');
+      return;
+    }
+    const lines = getBatchLines();
+    if (!lines.length){
+      showStatus('Nothing to export. Paste URLs first.', 'err');
+      return;
+    }
+    const opts = { forceHttps: !!forceHttps.checked, keepParams: !!keepParams.checked };
+    const rows = [['original','cleaned','changed']];
+    lines.forEach(l => {
+      const r = cleanURL(l, opts);
+      if (r.ok){
+        rows.push([r.before, r.after, String(r.changed)]);
+      } else {
+        rows.push([l, l, 'false']);
+      }
+    });
+    const csv = rows.map(row =>
+      row.map(v => {
+        const s = String(v ?? '');
+        return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+      }).join(',')
+    ).join('\n');
+
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const a = document.createElement('a');
+    const ts = new Date();
+    const pad = n => String(n).padStart(2,'0');
+    const fname = `cleaned-links-${ts.getFullYear()}${pad(ts.getMonth()+1)}${pad(ts.getDate())}-${pad(ts.getHours())}${pad(ts.getMinutes())}${pad(ts.getSeconds())}.csv`;
+    a.href = URL.createObjectURL(blob);
+    a.download = fname;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 100);
+    showStatus(`Exported ${lines.length} URLs to CSV.`, 'ok');
+  }
+
+  if (batchIn){
+    batchIn.addEventListener('input', autoResizeBatch);
+    window.addEventListener('load', autoResizeBatch);
+  }
+  if (batchCleanBtn) batchCleanBtn.addEventListener('click', handleBatchClean);
+  if (batchExportBtn) batchExportBtn.addEventListener('click', handleBatchExport);
+  // === KRAJ BATCH DODATKA ===
 
   // Pro modal
   function openPro(){
