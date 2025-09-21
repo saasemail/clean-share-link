@@ -1,5 +1,5 @@
 // Clean Share Link — single-file logic, no deps
-// v1.4: FastSpring popup + Pro unlock; daily free limit = 3, 5s cooldown
+// v1.5: robust FS origin check + Pro flag UI class + minor hardening
 
 (function(){
   const el = (id) => document.getElementById(id);
@@ -213,6 +213,8 @@
 
   function unlockProUI(){
     isPro = true;
+    // global UI signal
+    document.documentElement.classList.add('is-pro');
     updateQuotaUI();
     const batch = document.querySelector('.batch.pro-locked');
     if (batch) batch.classList.remove('pro-locked'); // skini ghost + sakrij "Pro" bedž u batchu
@@ -222,6 +224,7 @@
 
   // Wire up
   isPro = (localStorage.getItem(PRO_KEY) === '1');
+  if (isPro) document.documentElement.classList.add('is-pro');
   updateQuotaUI();
   if (isPro) {
     const batch = document.querySelector('.batch.pro-locked');
@@ -385,19 +388,36 @@
     }
   };
 
-  // NEW: hvataj FastSpring postMessage događaje (stabilnije)
+  // === Robustniji listener: dozvoli *.onfastspring.com i *.fastspring.com ===
   window.addEventListener('message', (e) => {
     try{
       const origin = String(e.origin || '');
-      // dozvoli poznate FS domene (test i prod)
-      const isFS = /fastspring\.com$/.test(new URL(origin).hostname);
+      let host = '';
+      try { host = new URL(origin).hostname; } catch {}
+
+      const isFS =
+        /\.onfastspring\.com$/.test(host) ||
+        /\.fastspring\.com$/.test(host)   ||
+        /fastspring/i.test(host); // zaštitna mreža
+
       if (!isFS) return;
 
       const d = e.data || {};
-      const type = d.type || d.event || d.fsEvent || (d.events && d.events[0] && d.events[0].type) || '';
-      const ref  = d.orderReference || (d.data && d.data.orderReference) || (d.events && d.events[0] && d.events[0].data && d.events[0].data.orderReference);
+      const type =
+        d.type || d.event || d.fsEvent ||
+        (d.events && d.events[0] && d.events[0].type) || '';
+      const ref =
+        d.orderReference ||
+        (d.data && d.data.orderReference) ||
+        (d.events && d.events[0] && d.events[0].data && d.events[0].data.orderReference);
 
-      if (ref && /order|subscription/i.test(type)) {
+      // Bilo koji signal da je kupovina prošla
+      const looksDone =
+        ref ||
+        /order|subscription/i.test(type) ||
+        /checkout.*(complete|success)/i.test(type);
+
+      if (looksDone) {
         try { localStorage.setItem(PRO_KEY, '1'); } catch {}
         unlockProUI();
       }
