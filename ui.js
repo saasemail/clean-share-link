@@ -44,21 +44,19 @@
 
   const ALLOW_WHEN_STRICT = new Set(['q','query','s','search','id','page','lang']);
 
-  // ======= NEW: robustno skidanje modala iz DOM-a pre FS popupa =======
+  // ======= robustno skidanje modala iz DOM-a pre FS popupa =======
   let modalRemoved = false;
   let modalPlaceholder = null;
   let backdropPlaceholder = null;
 
   function reattachModal(){
     if (!modalRemoved) return;
-    // vrati backdrop
     if (backdropPlaceholder && backdropPlaceholder.parentNode){
       backdropPlaceholder.parentNode.insertBefore(modalBackdrop, backdropPlaceholder);
       backdropPlaceholder.remove();
     } else {
       document.body.insertBefore(modalBackdrop, document.body.firstChild);
     }
-    // vrati dialog
     if (modalPlaceholder && modalPlaceholder.parentNode){
       modalPlaceholder.parentNode.insertBefore(proModal, modalPlaceholder);
       modalPlaceholder.remove();
@@ -66,15 +64,12 @@
       document.body.appendChild(proModal);
     }
     modalRemoved = false;
-    // sigurnosno sakrij
     modalBackdrop.hidden = true; modalBackdrop.style.display = 'none';
     if (typeof proModal.close === 'function') proModal.close();
     else proModal.style.display = 'none';
   }
-
   function hardDetachModal(){
     if (modalRemoved) return;
-    // napravi placeholdere pa ukloni iz DOM-a
     modalPlaceholder = document.createComment('proModal-placeholder');
     proModal.parentNode.insertBefore(modalPlaceholder, proModal);
     proModal.remove();
@@ -85,7 +80,7 @@
 
     modalRemoved = true;
   }
-  // ====================================================================
+  // ===============================================================
 
   // Utils
   const todayStr = () => {
@@ -306,14 +301,12 @@
 
   // Pro modal
   function openPro(){
-    // ako je bio skinut, vrati ga u DOM pre prikaza
     reattachModal();
     modalBackdrop.hidden = false;
     if (typeof proModal.showModal === 'function') proModal.showModal();
     else proModal.style.display = 'block';
   }
   function closePro(){
-    // softly hide
     modalBackdrop.hidden = true;
     modalBackdrop.style.display = 'none';
     if (typeof proModal.close === 'function') proModal.close();
@@ -323,21 +316,44 @@
   closeModal.addEventListener('click', closePro);
   modalBackdrop.addEventListener('click', closePro);
 
-  // ZATVARANJE / SKIDANJE PRE FS POPUP-a
+  // ---- FastSpring: ručno otvaranje nakon zatvaranja modala ----
+  async function waitForFS(ms=2000){
+    const t0 = Date.now();
+    while (!window.fastspring || !window.fastspring.builder){
+      if (Date.now()-t0 > ms) throw new Error('FastSpring not loaded');
+      await new Promise(r => setTimeout(r, 25));
+    }
+    return window.fastspring;
+  }
+  async function openFSCheckout(){
+    try{
+      const fs = await waitForFS();
+      try{ fs.builder.reset(); }catch{}
+      fs.builder.add('cslpro');
+      fs.builder.checkout();
+    }catch(e){
+      console.warn(e);
+      showStatus('Checkout is loading… please try again in a moment.', 'warn');
+    }
+  }
+
+  // SKINI data-fsc-* sa dugmeta, i mi preuzimamo kontrolu
   if (upgradeProBtn){
-    const killOverlay = (e)=>{
-      // zatvori + potpuno skloni modal i backdrop iz DOM-a pre FS popupa
+    upgradeProBtn.removeAttribute('data-fsc-action');
+    upgradeProBtn.removeAttribute('data-fsc-item-path-value');
+
+    const trigger = (e)=>{
       try{ e.preventDefault(); e.stopPropagation(); }catch{}
       closePro();
       hardDetachModal();
-      // FS će preuzeti fokus; mi samo sprečavamo da naš overlay ostane iznad
+      setTimeout(openFSCheckout, 20); // pusti FS-u da uhvati fokus
     };
-    upgradeProBtn.addEventListener('pointerdown', killOverlay, {capture:true});
-    upgradeProBtn.addEventListener('mousedown',   killOverlay, {capture:true});
-    upgradeProBtn.addEventListener('click',       killOverlay, {capture:true});
+    upgradeProBtn.addEventListener('pointerdown', trigger, {capture:true});
+    upgradeProBtn.addEventListener('mousedown',   trigger, {capture:true});
+    upgradeProBtn.addEventListener('click',       trigger, {capture:true});
   }
 
-  // Ghost batch → otvaraj Pro modal
+  // Ghost batch → Pro modal
   const ghostHit = (e) => {
     if (!isPro) {
       e.preventDefault();
@@ -358,9 +374,7 @@
 
   // FastSpring popup callback
   window.onFSPopupClosed = function(evt){
-    // kad god se popup zatvori, vrati naš modal nazad (ako je bio uklonjen)
     reattachModal();
-
     if (evt && evt.orderReference) {
       try { localStorage.setItem(PRO_KEY, '1'); } catch {}
       unlockProUI();
