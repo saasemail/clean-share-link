@@ -213,6 +213,8 @@
 
   function unlockProUI(){
     isPro = true;
+    // NEW: upiši trajno, da preživi reload
+    try { localStorage.setItem(PRO_KEY, '1'); } catch {}
     // global UI signal
     document.documentElement.classList.add('is-pro');
     updateQuotaUI();
@@ -332,9 +334,25 @@
     }
     return window.fastspring;
   }
+
+  // NEW: registruj SBL događaje (purchased/completed/activated → unlock)
+  function registerFSEvents(fs){
+    if (!fs || !fs.builder || !fs.builder.on) return;
+    const fire = ()=> unlockProUI();
+    [
+      'purchased',
+      'completed','complete','order.completed','checkout.completed',
+      'subscription.activated'
+    ].forEach(name => {
+      try { fs.builder.on(name, fire); } catch {}
+    });
+  }
+
   async function openFSCheckout(){
     try{
       const fs = await waitForFS();
+      // NEW: osiguraj hookove pre svakog checkout-a
+      registerFSEvents(fs);
       try{ fs.builder.reset(); }catch{}
       fs.builder.add('cslpro');
       fs.builder.checkout();
@@ -382,7 +400,8 @@
   // FastSpring popup callback (fallback)
   window.onFSPopupClosed = function(evt){
     reattachModal();
-    if (evt && evt.orderReference) {
+    // NEW: prihvati i šire signale iz testa
+    if (evt && (evt.orderReference || evt.completed === true || evt.success === true)) {
       try { localStorage.setItem(PRO_KEY, '1'); } catch {}
       unlockProUI();
     }
@@ -423,4 +442,13 @@
       }
     }catch{}
   });
+
+  // NEW: ako se SBL učita kasnije, registruj hookove i bez klika
+  (async () => {
+    try {
+      const fs = await waitForFS(6000);
+      registerFSEvents(fs);
+    } catch {}
+  })();
+
 })();
