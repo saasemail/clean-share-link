@@ -33,8 +33,6 @@
   const LAST_CLEAN_KEY = 'csl_last_ts_v1';
   const PRO_KEY = 'csl_pro_v1';
 
-  // (REMOVED heuristic keys that caused false unlocks)
-
   let isPro = false;
 
   // Tracking junk list
@@ -311,7 +309,7 @@
     window.open(val, '_blank', 'noopener,noreferrer');
   });
 
-  // === BATCH CLEAN (Pro) — ostaje kako je ===
+  // === BATCH CLEAN (Pro) — DODATO ===
   function autoResizeBatch(){
     if (!batchIn) return;
     batchIn.style.height = 'auto';
@@ -394,7 +392,7 @@
   }
   if (batchCleanBtn) batchCleanBtn.addEventListener('click', handleBatchClean);
   if (batchExportBtn) batchExportBtn.addEventListener('click', handleBatchExport);
-  // === KRAJ BATCH BLOKA ===
+  // === KRAJ BATCH DODATKA ===
 
   // Pro modal
   function openPro(){
@@ -423,7 +421,7 @@
     return window.fastspring;
   }
 
-  // REG: SBL događaji (jasni signali uspešne kupovine)
+  // REG: SBL događaji (ako postoje) — jasni signali uspešne kupovine
   function registerFSEvents(fs){
     if (!fs || !fs.builder || !fs.builder.on) return;
     const fire = ()=> unlockProUI();
@@ -464,6 +462,18 @@
     upgradeProBtn.addEventListener('mousedown',   trigger, {capture:true});
     upgradeProBtn.addEventListener('click',       trigger, {capture:true});
   }
+
+  // Ghost batch → Pro modal
+  const ghostHit = (e) => {
+    if (!isPro) {
+      e.preventDefault();
+      openPro();
+      showStatus('Batch mode is a Pro feature.', 'warn');
+    }
+  };
+  if (batchIn) batchIn.addEventListener('focus', ghostHit);
+  if (batchCleanBtn) batchCleanBtn.addEventListener('click', ghostHit);
+  if (batchExportBtn) batchExportBtn.addEventListener('click', ghostHit);
 
   // QoL: Ctrl+Enter to clean
   urlIn.addEventListener('keydown', (e) => {
