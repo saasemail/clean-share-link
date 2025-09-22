@@ -33,8 +33,11 @@
   const LAST_CLEAN_KEY = 'csl_last_ts_v1';
   const PRO_KEY = 'csl_pro_v1';
 
+  // NEW (heuristic safety): beležimo vreme pokretanja checkout-a
+  const CHECKOUT_TS_KEY = 'csl_checkout_ts';
+  const CHECKOUT_VALID_MS = 15 * 60 * 1000; // 15 min
+
   let isPro = false;
-  let proUnlockedOnce = false; // idempotent protection
 
   // Tracking junk list
   const TRACK_EXACT = new Set([
@@ -69,8 +72,18 @@
     if (typeof proModal.close === 'function') proModal.close();
     else proModal.style.display = 'none';
   }
-  function hardDetachModal(){ /* no-op: keep modal in DOM to avoid SBL quirks */ }
+  function hardDetachModal(){
+    if (modalRemoved) return;
+    modalPlaceholder = document.createComment('proModal-placeholder');
+    proModal.parentNode.insertBefore(modalPlaceholder, proModal);
+    proModal.remove();
 
+    backdropPlaceholder = document.createComment('modalBackdrop-placeholder');
+    modalBackdrop.parentNode.insertBefore(backdropPlaceholder, modalBackdrop);
+    modalBackdrop.remove();
+
+    modalRemoved = true;
+  }
   // ===============================================================
 
   // Utils
@@ -203,10 +216,10 @@
   }
 
   function unlockProUI(){
-    if (proUnlockedOnce) return;
-    proUnlockedOnce = true;
     isPro = true;
+    // trajno zabeleži Pro
     try { localStorage.setItem(PRO_KEY, '1'); } catch {}
+    // global UI signal
     document.documentElement.classList.add('is-pro');
     updateQuotaUI();
     const batch = document.querySelector('.batch.pro-locked');
@@ -217,10 +230,7 @@
 
   // Wire up
   isPro = (localStorage.getItem(PRO_KEY) === '1');
-  if (isPro) {
-    proUnlockedOnce = true;
-    document.documentElement.classList.add('is-pro');
-  }
+  if (isPro) document.documentElement.classList.add('is-pro');
   updateQuotaUI();
   if (isPro) {
     const batch = document.querySelector('.batch.pro-locked');
@@ -303,7 +313,7 @@
     window.open(val, '_blank', 'noopener,noreferrer');
   });
 
-  // === BATCH CLEAN (Pro) ===
+  // === BATCH CLEAN (Pro) — DODATO ===
   function autoResizeBatch(){
     if (!batchIn) return;
     batchIn.style.height = 'auto';
@@ -386,6 +396,7 @@
   }
   if (batchCleanBtn) batchCleanBtn.addEventListener('click', handleBatchClean);
   if (batchExportBtn) batchExportBtn.addEventListener('click', handleBatchExport);
+  // === KRAJ BATCH DODATKA ===
 
   // Pro modal
   function openPro(){
@@ -407,59 +418,66 @@
   // ---- FastSpring: ručno otvaranje nakon zatvaranja modala ----
   async function waitForFS(ms=2000){
     const t0 = Date.now();
-    while (!window.fastspring || (!window.fastspring.builder && typeof window.fastspring.on!=='function')){
+    while (!window.fastspring || !window.fastspring.builder){
       if (Date.now()-t0 > ms) throw new Error('FastSpring not loaded');
       await new Promise(r => setTimeout(r, 25));
     }
     return window.fastspring;
   }
 
-  // Helper: bezbedno registruj više događaja i na fs i na fs.builder
-  function safeOn(target, events, cb){
-    if (!target || typeof target.on !== 'function') return;
-    events.forEach(evt => {
-      try { target.on(evt, cb); } catch {}
+  // REG: SBL događaji (ako postoje) + beleženje checkout starta
+  function registerFSEvents(fs){
+    if (!fs || !fs.builder || !fs.builder.on) return;
+    const fire = ()=> unlockProUI();
+    [
+      'purchased',
+      'completed','complete','order.completed','checkout.completed',
+      'subscription.activated'
+    ].forEach(name => {
+      try { fs.builder.on(name, fire); } catch {}
     });
   }
 
-  // REG: SBL događaji (jasni signali uspešne kupovine)
-  function registerFSEvents(fs){
-    const fire = ()=> { window._fsLastGood = true; unlockProUI(); };
-    const evts = [
-      'purchased',
-      'completed','complete',
-      'order.completed','order.approved','order.success',
-      'checkout.completed','checkout.success',
-      'subscription.activated','subscription.completed'
-    ];
-    safeOn(fs, evts, fire);               // global fastspring.on(...)
-    if (fs && fs.builder) safeOn(fs.builder, evts, fire); // fastspring.builder.on(...)
+  // NEW: heuristika — zabeleži da smo baš sada otvorili checkout
+  function markCheckoutStarted(){
+    try { localStorage.setItem(CHECKOUT_TS_KEY, String(Date.now())); } catch {}
+  }
+  function recentlyStartedCheckout(){
+    const ts = Number(localStorage.getItem(CHECKOUT_TS_KEY) || 0);
+    return ts && (Date.now() - ts) <= CHECKOUT_VALID_MS;
   }
 
   async function openFSCheckout(){
     try{
       const fs = await waitForFS();
       registerFSEvents(fs);
-      try{ fs.builder && fs.builder.reset && fs.builder.reset(); }catch{}
-      if (fs.builder && typeof fs.builder.add === 'function') try{fs.builder.add('cslpro');}catch{}
-      if (fs.builder && typeof fs.builder.checkout === 'function') fs.builder.checkout();
-      else showStatus('Checkout is loading… please try again in a moment.', 'warn');
+      markCheckoutStarted(); // <<<<<< zabeleži start
+      try{ fs.builder.reset(); }catch{}
+      fs.builder.add('cslpro');
+      fs.builder.checkout();
     }catch(e){
       console.warn(e);
       showStatus('Checkout is loading… please try again in a moment.', 'warn');
     }
   }
 
-  
-  // Upgrade button: let FastSpring SBL handle default action via data-fsc-* attributes.
+  // SKINI data-fsc-* sa dugmeta, i mi preuzimamo kontrolu
   if (upgradeProBtn){
-    upgradeProBtn.addEventListener('click', () => {
-      // close our modal so popup can focus
+    upgradeProBtn.removeAttribute('data-fsc-action');
+    upgradeProBtn.removeAttribute('data-fsc-item-path-value');
+
+    const trigger = (e)=>{
+      try{ e.preventDefault(); e.stopPropagation(); }catch{}
       closePro();
-    }, {capture:true});
+      hardDetachModal();
+      setTimeout(openFSCheckout, 20); // pusti FS-u da uhvati fokus
+    };
+    upgradeProBtn.addEventListener('pointerdown', trigger, {capture:true});
+    upgradeProBtn.addEventListener('mousedown',   trigger, {capture:true});
+    upgradeProBtn.addEventListener('click',       trigger, {capture:true});
   }
 
-// Ghost batch → Pro modal
+  // Ghost batch → Pro modal
   const ghostHit = (e) => {
     if (!isPro) {
       e.preventDefault();
@@ -478,23 +496,29 @@
     }
   });
 
-  // FastSpring popup callback (fallback – samo “hard” signal)
+  // FastSpring popup callback (fallback + heuristika)
   window.onFSPopupClosed = function(evt){
     reattachModal();
-    if ((evt && (evt.orderReference || evt.completed === true || evt.success === true)) || window._fsLastGood === true) {
+    // Ako FS ne pošalje orderReference, otključaj ako je popup zatvoren ubrzo nakon starta checkout-a
+    const successSignal = !!(evt && (evt.orderReference || evt.completed === true || evt.success === true));
+    if (successSignal || recentlyStartedCheckout()) {
       unlockProUI();
     }
   };
 
-  // postMessage iz FS (samo uz jasan signal)
+  // postMessage iz FS (fallback + heuristika)
   window.addEventListener('message', (e) => {
     try{
       const origin = String(e.origin || '');
       let host = '';
       try { host = new URL(origin).hostname; } catch {}
 
-      const originStr = String(e.origin || '');
-      if (!/fastspring/i.test(originStr)) return;
+      const isFS =
+        /\.onfastspring\.com$/.test(host) ||
+        /\.fastspring\.com$/.test(host)   ||
+        /fastspring/i.test(host); // zaštitna mreža
+
+      if (!isFS) return;
 
       const d = e.data || {};
       const type =
@@ -506,17 +530,16 @@
         (d.events && d.events[0] && d.events[0].data && d.events[0].data.orderReference);
 
       const looksDone =
-        !!ref ||
-        /(order|subscription).*completed|subscription\.activated|checkout\.completed/i.test(type);
+        ref ||
+        /order|subscription/i.test(type) ||
+        /checkout.*(complete|success)/i.test(type) ||
+        recentlyStartedCheckout();
 
-      if (looksDone){ window._fsLastGood = true; unlockProUI(); }
+      if (looksDone) unlockProUI();
     }catch{}
   });
 
-  
-  // If FS already loaded, register immediately
-  if (window.fastspring) { try { registerFSEvents(window.fastspring); } catch {} }
-// Ako se SBL učita kasnije, registruj hookove
+  // Ako se SBL učita kasnije, registruj hookove
   (async () => {
     try {
       const fs = await waitForFS(6000);
