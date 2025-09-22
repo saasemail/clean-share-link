@@ -69,18 +69,8 @@
     if (typeof proModal.close === 'function') proModal.close();
     else proModal.style.display = 'none';
   }
-  function hardDetachModal(){
-    if (modalRemoved) return;
-    modalPlaceholder = document.createComment('proModal-placeholder');
-    proModal.parentNode.insertBefore(modalPlaceholder, proModal);
-    proModal.remove();
+  function hardDetachModal(){ /* no-op: keep modal in DOM to avoid SBL quirks */ }
 
-    backdropPlaceholder = document.createComment('modalBackdrop-placeholder');
-    modalBackdrop.parentNode.insertBefore(backdropPlaceholder, modalBackdrop);
-    modalBackdrop.remove();
-
-    modalRemoved = true;
-  }
   // ===============================================================
 
   // Utils
@@ -313,7 +303,7 @@
     window.open(val, '_blank', 'noopener,noreferrer');
   });
 
-  // === BATCH CLEAN (Pro) — DODATO ===
+  // === BATCH CLEAN (Pro) ===
   function autoResizeBatch(){
     if (!batchIn) return;
     batchIn.style.height = 'auto';
@@ -396,7 +386,6 @@
   }
   if (batchCleanBtn) batchCleanBtn.addEventListener('click', handleBatchClean);
   if (batchExportBtn) batchExportBtn.addEventListener('click', handleBatchExport);
-  // === KRAJ BATCH DODATKA ===
 
   // Pro modal
   function openPro(){
@@ -418,7 +407,7 @@
   // ---- FastSpring: ručno otvaranje nakon zatvaranja modala ----
   async function waitForFS(ms=2000){
     const t0 = Date.now();
-    while (!window.fastspring || (!window.fastspring.builder && !window.fastspring.on)){
+    while (!window.fastspring || (!window.fastspring.builder && typeof window.fastspring.on!=='function')){
       if (Date.now()-t0 > ms) throw new Error('FastSpring not loaded');
       await new Promise(r => setTimeout(r, 25));
     }
@@ -435,15 +424,16 @@
 
   // REG: SBL događaji (jasni signali uspešne kupovine)
   function registerFSEvents(fs){
-    const fire = ()=> unlockProUI();
+    const fire = ()=> { window._fsLastGood = true; unlockProUI(); };
     const evts = [
       'purchased',
       'completed','complete',
-      'order.completed','checkout.completed',
+      'order.completed','order.approved','order.success',
+      'checkout.completed','checkout.success',
       'subscription.activated','subscription.completed'
     ];
-    safeOn(fs, evts, fire);               // <— global fastspring.on(...)
-    if (fs && fs.builder) safeOn(fs.builder, evts, fire); // <— fastspring.builder.on(...)
+    safeOn(fs, evts, fire);               // global fastspring.on(...)
+    if (fs && fs.builder) safeOn(fs.builder, evts, fire); // fastspring.builder.on(...)
   }
 
   async function openFSCheckout(){
@@ -451,7 +441,7 @@
       const fs = await waitForFS();
       registerFSEvents(fs);
       try{ fs.builder && fs.builder.reset && fs.builder.reset(); }catch{}
-      if (fs.builder && typeof fs.builder.add === 'function') fs.builder.add('cslpro');
+      if (fs.builder && typeof fs.builder.add === 'function') try{fs.builder.add('cslpro');}catch{}
       if (fs.builder && typeof fs.builder.checkout === 'function') fs.builder.checkout();
       else showStatus('Checkout is loading… please try again in a moment.', 'warn');
     }catch(e){
@@ -468,7 +458,6 @@
     const trigger = (e)=>{
       try{ e.preventDefault(); e.stopPropagation(); }catch{}
       closePro();
-      hardDetachModal();
       setTimeout(openFSCheckout, 20); // pusti FS-u da uhvati fokus
     };
     upgradeProBtn.addEventListener('pointerdown', trigger, {capture:true});
@@ -498,7 +487,7 @@
   // FastSpring popup callback (fallback – samo “hard” signal)
   window.onFSPopupClosed = function(evt){
     reattachModal();
-    if (evt && (evt.orderReference || evt.completed === true || evt.success === true)) {
+    if ((evt && (evt.orderReference || evt.completed === true || evt.success === true)) || window._fsLastGood === true) {
       unlockProUI();
     }
   };
@@ -530,7 +519,7 @@
         !!ref ||
         /(order|subscription).*completed|subscription\.activated|checkout\.completed/i.test(type);
 
-      if (looksDone) unlockProUI();
+      if (looksDone){ window._fsLastGood = true; unlockProUI(); }
     }catch{}
   });
 
