@@ -34,6 +34,7 @@
   const PRO_KEY = 'csl_pro_v1';
 
   let isPro = false;
+  let proUnlockedOnce = false; // idempotent protection
 
   // Tracking junk list
   const TRACK_EXACT = new Set([
@@ -212,10 +213,10 @@
   }
 
   function unlockProUI(){
+    if (proUnlockedOnce) return;
+    proUnlockedOnce = true;
     isPro = true;
-    // trajno zabeleži Pro
     try { localStorage.setItem(PRO_KEY, '1'); } catch {}
-    // global UI signal
     document.documentElement.classList.add('is-pro');
     updateQuotaUI();
     const batch = document.querySelector('.batch.pro-locked');
@@ -226,7 +227,10 @@
 
   // Wire up
   isPro = (localStorage.getItem(PRO_KEY) === '1');
-  if (isPro) document.documentElement.classList.add('is-pro');
+  if (isPro) {
+    proUnlockedOnce = true;
+    document.documentElement.classList.add('is-pro');
+  }
   updateQuotaUI();
   if (isPro) {
     const batch = document.querySelector('.batch.pro-locked');
@@ -414,33 +418,42 @@
   // ---- FastSpring: ručno otvaranje nakon zatvaranja modala ----
   async function waitForFS(ms=2000){
     const t0 = Date.now();
-    while (!window.fastspring || !window.fastspring.builder){
+    while (!window.fastspring || (!window.fastspring.builder && !window.fastspring.on)){
       if (Date.now()-t0 > ms) throw new Error('FastSpring not loaded');
       await new Promise(r => setTimeout(r, 25));
     }
     return window.fastspring;
   }
 
-  // REG: SBL događaji (ako postoje) — jasni signali uspešne kupovine
-  function registerFSEvents(fs){
-    if (!fs || !fs.builder || !fs.builder.on) return;
-    const fire = ()=> unlockProUI();
-    [
-      'purchased',
-      'completed','complete','order.completed','checkout.completed',
-      'subscription.activated'
-    ].forEach(name => {
-      try { fs.builder.on(name, fire); } catch {}
+  // Helper: bezbedno registruj više događaja i na fs i na fs.builder
+  function safeOn(target, events, cb){
+    if (!target || typeof target.on !== 'function') return;
+    events.forEach(evt => {
+      try { target.on(evt, cb); } catch {}
     });
+  }
+
+  // REG: SBL događaji (jasni signali uspešne kupovine)
+  function registerFSEvents(fs){
+    const fire = ()=> unlockProUI();
+    const evts = [
+      'purchased',
+      'completed','complete',
+      'order.completed','checkout.completed',
+      'subscription.activated','subscription.completed'
+    ];
+    safeOn(fs, evts, fire);               // <— global fastspring.on(...)
+    if (fs && fs.builder) safeOn(fs.builder, evts, fire); // <— fastspring.builder.on(...)
   }
 
   async function openFSCheckout(){
     try{
       const fs = await waitForFS();
       registerFSEvents(fs);
-      try{ fs.builder.reset(); }catch{}
-      fs.builder.add('cslpro');
-      fs.builder.checkout();
+      try{ fs.builder && fs.builder.reset && fs.builder.reset(); }catch{}
+      if (fs.builder && typeof fs.builder.add === 'function') fs.builder.add('cslpro');
+      if (fs.builder && typeof fs.builder.checkout === 'function') fs.builder.checkout();
+      else showStatus('Checkout is loading… please try again in a moment.', 'warn');
     }catch(e){
       console.warn(e);
       showStatus('Checkout is loading… please try again in a moment.', 'warn');
@@ -482,7 +495,7 @@
     }
   });
 
-  // FastSpring popup callback (fallback – sada samo “hard” signal)
+  // FastSpring popup callback (fallback – samo “hard” signal)
   window.onFSPopupClosed = function(evt){
     reattachModal();
     if (evt && (evt.orderReference || evt.completed === true || evt.success === true)) {
