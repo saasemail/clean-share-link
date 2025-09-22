@@ -45,33 +45,13 @@
 
   const ALLOW_WHEN_STRICT = new Set(['q','query','s','search','id','page','lang']);
 
-  // ======= robustno skidanje modala iz DOM-a pre FS popupa =======
-  let modalRemoved = false;
-  let modalPlaceholder = null;
-  let backdropPlaceholder = null;
-
+  // ======= modal helpers =======
   function reattachModal(){
-    if (!modalRemoved) return;
-    if (backdropPlaceholder && backdropPlaceholder.parentNode){
-      backdropPlaceholder.parentNode.insertBefore(modalBackdrop, backdropPlaceholder);
-      backdropPlaceholder.remove();
-    } else {
-      document.body.insertBefore(modalBackdrop, document.body.firstChild);
-    }
-    if (modalPlaceholder && modalPlaceholder.parentNode){
-      modalPlaceholder.parentNode.insertBefore(proModal, modalPlaceholder);
-      modalPlaceholder.remove();
-    } else {
-      document.body.appendChild(proModal);
-    }
-    modalRemoved = false;
     modalBackdrop.hidden = true; modalBackdrop.style.display = 'none';
     if (typeof proModal.close === 'function') proModal.close();
     else proModal.style.display = 'none';
   }
-  function hardDetachModal(){ /* no-op: keep modal in DOM to avoid SBL quirks */ }
-
-  // ===============================================================
+  function hardDetachModal(){ /* intentionally noop */ }
 
   // Utils
   const todayStr = () => {
@@ -389,7 +369,6 @@
 
   // Pro modal
   function openPro(){
-    reattachModal();
     modalBackdrop.hidden = false;
     if (typeof proModal.showModal === 'function') proModal.showModal();
     else proModal.style.display = 'block';
@@ -404,8 +383,43 @@
   closeModal.addEventListener('click', closePro);
   modalBackdrop.addEventListener('click', closePro);
 
-  // ---- FastSpring: ručno otvaranje nakon zatvaranja modala ----
-  async function waitForFS(ms=2000){
+  // ---- FastSpring helpers ----
+  function lc(x){ return String(x||'').toLowerCase(); }
+
+  function payloadLooksSuccessful(d){
+    if (!d) return false;
+
+    // try common fields
+    const ref = d.orderReference || d.reference || d.orderId || d.id ||
+                (d.data && (d.data.orderReference || d.data.reference || d.data.orderId || d.data.id)) ||
+                (d.events && d.events[0] && (d.events[0].data?.orderReference || d.events[0].data?.reference));
+
+    const type = d.type || d.event || d.fsEvent ||
+                 (d.events && d.events[0] && d.events[0].type);
+
+    const status = d.status || d.result || d.outcome ||
+                   (d.data && (d.data.status || d.data.result || d.data.outcome)) ||
+                   (d.events && d.events[0] && (d.events[0].data?.status));
+
+    // normalize
+    const t = lc(type);
+    const s = lc(status);
+
+    // explicit success statuses / types
+    const success =
+      (ref && (s === 'successful' || s === 'success' || s === 'approved' || s === 'purchased' || s === 'completed' || s === 'activated' || s === 'fulfilled')) ||
+      /(order|checkout|subscription)\.(completed|success|approved|activated)/i.test(t) ||
+      t === 'completed' || t === 'complete' || t === 'purchased';
+
+    // explicit failure / cancel guards
+    const failure =
+      /cancel|canceled|cancelled|declin|fail|error|expired/.test(s) ||
+      /(order|checkout|subscription)\.(canceled|cancelled|failed|declined|error)/i.test(t);
+
+    return success && !failure;
+  }
+
+  async function waitForFS(ms=4000){
     const t0 = Date.now();
     while (!window.fastspring || (!window.fastspring.builder && typeof window.fastspring.on!=='function')){
       if (Date.now()-t0 > ms) throw new Error('FastSpring not loaded');
@@ -414,26 +428,35 @@
     return window.fastspring;
   }
 
-  // Helper: bezbedno registruj više događaja i na fs i na fs.builder
   function safeOn(target, events, cb){
     if (!target || typeof target.on !== 'function') return;
-    events.forEach(evt => {
-      try { target.on(evt, cb); } catch {}
-    });
+    events.forEach(evt => { try { target.on(evt, cb); } catch {} });
   }
 
-  // REG: SBL događaji (jasni signali uspešne kupovine)
   function registerFSEvents(fs){
-    const fire = ()=> { window._fsLastGood = true; unlockProUI(); };
-    const evts = [
+    const fire = (d)=>{ if (payloadLooksSuccessful(d)) unlockProUI(); };
+
+    // Global-level SBL
+    safeOn(fs, [
       'purchased',
       'completed','complete',
       'order.completed','order.approved','order.success',
       'checkout.completed','checkout.success',
-      'subscription.activated','subscription.completed'
-    ];
-    safeOn(fs, evts, fire);               // global fastspring.on(...)
-    if (fs && fs.builder) safeOn(fs.builder, evts, fire); // fastspring.builder.on(...)
+      'subscription.activated','subscription.completed',
+      'data' // <-- ključni generički event (nosi status/reference)
+    ], fire);
+
+    // Builder-level SBL
+    if (fs && fs.builder){
+      safeOn(fs.builder, [
+        'purchased',
+        'completed','complete',
+        'order.completed','order.approved','order.success',
+        'checkout.completed','checkout.success',
+        'subscription.activated','subscription.completed',
+        'data' // <-- ključni generički event
+      ], fire);
+    }
   }
 
   async function openFSCheckout(){
@@ -441,7 +464,7 @@
       const fs = await waitForFS();
       registerFSEvents(fs);
       try{ fs.builder && fs.builder.reset && fs.builder.reset(); }catch{}
-      if (fs.builder && typeof fs.builder.add === 'function') try{fs.builder.add('cslpro');}catch{}
+      if (fs.builder && typeof fs.builder.add === 'function') try{ fs.builder.add('cslpro'); }catch{}
       if (fs.builder && typeof fs.builder.checkout === 'function') fs.builder.checkout();
       else showStatus('Checkout is loading… please try again in a moment.', 'warn');
     }catch(e){
@@ -450,7 +473,6 @@
     }
   }
 
-  // SKINI data-fsc-* sa dugmeta, i mi preuzimamo kontrolu
   if (upgradeProBtn){
     upgradeProBtn.removeAttribute('data-fsc-action');
     upgradeProBtn.removeAttribute('data-fsc-item-path-value');
@@ -458,7 +480,7 @@
     const trigger = (e)=>{
       try{ e.preventDefault(); e.stopPropagation(); }catch{}
       closePro();
-      setTimeout(openFSCheckout, 20); // pusti FS-u da uhvati fokus
+      setTimeout(openFSCheckout, 20);
     };
     upgradeProBtn.addEventListener('pointerdown', trigger, {capture:true});
     upgradeProBtn.addEventListener('mousedown',   trigger, {capture:true});
@@ -484,15 +506,13 @@
     }
   });
 
-  // FastSpring popup callback (fallback – samo “hard” signal)
+  // Popup closed (ne otključava osim uz jasan signal iz objekta)
   window.onFSPopupClosed = function(evt){
     reattachModal();
-    if ((evt && (evt.orderReference || evt.completed === true || evt.success === true)) || window._fsLastGood === true) {
-      unlockProUI();
-    }
+    if (payloadLooksSuccessful(evt)) unlockProUI();
   };
 
-  // postMessage iz FS (samo uz jasan signal)
+  // Robust postMessage iz FS (radi i kad dode stringified JSON)
   window.addEventListener('message', (e) => {
     try{
       const origin = String(e.origin || '');
@@ -502,28 +522,20 @@
       const isFS =
         /\.onfastspring\.com$/.test(host) ||
         /\.fastspring\.com$/.test(host)   ||
-        /fastspring/i.test(host);
+        /(^|\.)fastspring\.com$/i.test(host);
 
       if (!isFS) return;
 
-      const d = e.data || {};
-      const type =
-        d.type || d.event || d.fsEvent ||
-        (d.events && d.events[0] && d.events[0].type) || '';
-      const ref =
-        d.orderReference ||
-        (d.data && d.data.orderReference) ||
-        (d.events && d.events[0] && d.events[0].data && d.events[0].data.orderReference);
+      let d = e.data;
+      if (typeof d === 'string'){
+        try { d = JSON.parse(d); } catch {}
+      }
 
-      const looksDone =
-        !!ref ||
-        /(order|subscription).*completed|subscription\.activated|checkout\.completed/i.test(type);
-
-      if (looksDone){ window._fsLastGood = true; unlockProUI(); }
+      if (payloadLooksSuccessful(d)) unlockProUI();
     }catch{}
   });
 
-  // Ako se SBL učita kasnije, registruj hookove
+  // Late SBL load
   (async () => {
     try {
       const fs = await waitForFS(6000);
