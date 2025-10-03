@@ -31,8 +31,7 @@
     <section class="card">
       <h2 class="card-title">Create channel-tagged affiliate links → CSV</h2>
       <p class="muted small">
-        Paste your affiliate links (Amazon, CJ, Awin, Impact, Rakuten, eBay, ClickBank…). We keep critical
-        affiliate params and add a per-channel SubID (e.g., Amazon <code>ascsubtag</code>, Awin <code>clickref</code>).
+        Paste affiliate URLs and channels. We keep critical affiliate params and add a per-channel SubID.
       </p>
 
       <label for="urlsIn" class="label">Affiliate URLs <span class="dim">(one per line)</span></label>
@@ -61,10 +60,21 @@ newsletter_aug"></textarea>
       </div>
       <p class="muted small" style="margin-top:6px">Export costs 1 credit and includes all rows.</p>
 
-      <!-- Summary + grouped preview -->
       <div id="status" class="status" role="status" aria-live="polite" style="margin-top:10px"></div>
       <div id="smtSummary" class="smt-summary muted small"></div>
-      <div id="smtPreview" class="smt-preview muted small"></div>
+
+      <!-- Ultra-clean preview table -->
+      <div class="tbl-wrap">
+        <table class="tbl" id="smtTable">
+          <thead>
+            <tr><th>Network</th><th>Channel</th><th>Result</th></tr>
+          </thead>
+          <tbody id="smtTbody"><tr><td colspan="3" class="dim">No preview yet.</td></tr></tbody>
+        </table>
+      </div>
+      <div class="muted tiny" id="smtHint" style="margin-top:6px;display:none">
+        Preview shows one full URL; other rows are masked. Export reveals all final URLs.
+      </div>
     </section>
 
     <footer class="foot muted">

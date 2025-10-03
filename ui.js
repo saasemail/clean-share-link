@@ -1,4 +1,4 @@
-// SubID Matrix — affiliate-only (grouped preview, masked preview B, no example button)
+// SubID Matrix — ultra-clean table preview (one full row, others masked). Credits + FastSpring intact.
 
 (function(){
   const el = (id) => document.getElementById(id);
@@ -15,7 +15,8 @@
   const affBadge     = el('affCredits');
 
   const smtSummary   = el('smtSummary');
-  const smtPreview   = el('smtPreview');
+  const smtHint      = el('smtHint');
+  const smtTbody     = el('smtTbody');
 
   // Credits
   const AFF_CREDITS_KEY = 'csl_aff_credits';
@@ -28,12 +29,12 @@
   function getLines(textarea){ return (textarea?.value||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean); }
   function normalizeUrlInput(raw){ let s=(raw||'').trim(); if(!s) return ''; if(!/^https?:\/\//i.test(s)) s='https://'+s; return s; }
 
-  // --- Comment stripping for URLs ---
+  // Comment stripping for URLs
   function stripUrlComment(line){
     let s = (line || '').trim();
     s = s.replace(/\s*\([^()]*\)\s*$/,''); // (comment)
-    s = s.replace(/\s+#.*$/,'');           //  #comment
-    s = s.replace(/\s\/\/.*$/,'');         //  //comment (not scheme)
+    s = s.replace(/\s+#.*$/,'');           // #comment
+    s = s.replace(/\s\/\/.*$/,'');         // //comment (not scheme)
     s = s.split(/\s+/)[0] || '';
     return s.trim();
   }
@@ -42,23 +43,23 @@
       .split(/\r?\n/).map(stripUrlComment).map(s=>s.trim()).filter(Boolean);
   }
 
-  // Reference data (networks / junk)
+  // Networks
   const NETWORKS = [
     { id:"amazon", host:/(^|\.)amazon\./i, subParam:"ascsubtag", keep:["tag","ascsubtag"],
-      remove:["qid","sr","ref","smid","spIA","keywords","_encoding"], deeplinkKeys:[], required:["tag"] },
+      remove:["qid","sr","ref","smid","spIA","keywords","_encoding"], deeplinkKeys:[], required:["tag"], label:"Amazon" },
     { id:"ebay", host:/(^|\.)ebay\./i, subParam:"customid", keep:["campid","mkcid","siteid","mkevt","mkrid","customid"],
-      remove:["_trkparms","hash"], deeplinkKeys:["url","u","_trkparms"] },
+      remove:["_trkparms","hash"], deeplinkKeys:["url","u","_trkparms"], label:"eBay" },
     { id:"cj", host:/(anrdoezrs\.net|tkqlhce\.com|dpbolvw\.net|kqzyfj\.com|jdoqocy\.com)/i, subParam:"sid",
-      keep:["sid","url","u"], remove:[], deeplinkKeys:["url","u","destination","dest","dl"] },
+      keep:["sid","url","u"], remove:[], deeplinkKeys:["url","u","destination","dest","dl"], label:"CJ" },
     { id:"awin", host:/(go\.awin\.link|awin1\.com|prf\.hn|shareasale\.com)/i, subParam:"clickref",
-      keep:["clickref","l","p","d","u"], remove:[], deeplinkKeys:["u","url","destination","dest","dl","d","l","p"] },
+      keep:["clickref","l","p","d","u"], remove:[], deeplinkKeys:["u","url","destination","dest","dl","d","l","p"], label:"Awin" },
     { id:"impact", host:/(impactradius|impactradius-event|impact\.com)/i, subParam:"subId",
-      keep:["subId","clickId","campaignId","partnerId","mediaPartnerId"], remove:[], deeplinkKeys:["url","u","destination","dest","dl"] },
+      keep:["subId","clickId","campaignId","partnerId","mediaPartnerId"], remove:[], deeplinkKeys:["url","u","destination","dest","dl"], label:"Impact" },
     { id:"rakuten", host:/(linksynergy\.com|rakutenmarketing\.com|rakutenadvertising\.com)/i, subParam:"u1",
-      keep:["u1","id","mid","murl"], remove:[], deeplinkKeys:["murl","url","u","destination","dest","dl"] },
-    { id:"clickbank", host:/hop\.clickbank\.net/i, subParam:"tid", keep:["tid","affiliate","vendor","hop"], remove:[], deeplinkKeys:["u","url"] },
+      keep:["u1","id","mid","murl"], remove:[], deeplinkKeys:["murl","url","u","destination","dest","dl"], label:"Rakuten" },
+    { id:"clickbank", host:/hop\.clickbank\.net/i, subParam:"tid", keep:["tid","affiliate","vendor","hop"], remove:[], deeplinkKeys:["u","url"], label:"ClickBank" },
     { id:"general", host:/.*/i, subParam:"subid",
-      keep:["tag","aff_id","ref","ref_id","clickid","aff","affiliate","pid","aid","campaign","adgroup","subid","sid"], remove:[], deeplinkKeys:["url","u","destination","dest","dl"] },
+      keep:["tag","aff_id","ref","ref_id","clickid","aff","affiliate","pid","aid","campaign","adgroup","subid","sid"], remove:[], deeplinkKeys:["url","u","destination","dest","dl"], label:"General" },
   ];
   const GLOBAL_REMOVE = [
     "utm_source","utm_medium","utm_campaign","utm_term","utm_content",
@@ -66,21 +67,14 @@
   ];
   const SHORTENER_HOSTS = /(^|\.)((bit\.ly)|(t\.co)|(goo\.gl)|(tinyurl\.com)|(ow\.ly)|(buff\.ly)|(is\.gd)|(cutt\.ly)|(rebrand\.ly)|(lnkd\.in)|(t\.ly)|(s\.id)|(shorturl\.at)|(amzn\.to))$/i;
 
-  // Normalizers
-  function normalizeChannel(label){
-    let s=(label||'').toLowerCase().trim();
-    s = s.normalize ? s.normalize('NFD').replace(/[\u0300-\u036f]/g,'') : s;
-    s = s.replace(/[^a-z0-9\-_]+/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
-    if (s.length>24) s=s.slice(0,24);
-    return s;
-  }
   function detectNetwork(u){
     try{ const host = new URL(u).hostname; for(const n of NETWORKS){ if(n.host.test(host)) return n.id; } }catch{}
     return 'unknown';
   }
-  function getNetworkRecord(u){ const id=detectNetwork(u); return NETWORKS.find(n=>n.id===id)||NETWORKS[NETWORKS.length-1]; }
+  function netRecord(u){ const id=detectNetwork(u); return NETWORKS.find(n=>n.id===id)||NETWORKS[NETWORKS.length-1]; }
+  function netLabel(id){ return (NETWORKS.find(n=>n.id===id)||{}).label || id; }
 
-  // Cleaning / canon / keep params
+  // Cleaning
   function canonicalizeAmazon(url){
     const m1 = url.pathname.match(/\/dp\/([A-Z0-9]{10})/i);
     const m2 = url.pathname.match(/\/gp\/product\/([A-Z0-9]{10})/i);
@@ -131,7 +125,7 @@
     for (const raw of baseUrls){
       const init = normalizeUrlInput(raw);
       let urlObj; try{ urlObj=new URL(init);}catch{continue;}
-      const rec = getNetworkRecord(init);
+      const rec = netRecord(init);
       if (rec.id==='amazon') canonicalizeAmazon(urlObj);
       let preserved = keepAffiliateParams(urlObj.href, rec, !!keepUTMs);
       const host = (()=>{ try{ return new URL(preserved).hostname; }catch{ return ''; } })();
@@ -148,6 +142,7 @@
           index: ++i,
           base_url: preserved,
           network: rec.id,
+          network_label: rec.label || rec.id,
           channel_code: ch,
           subid_param: key,
           final_url: href,
@@ -158,7 +153,7 @@
     return rows;
   }
 
-  // ---- Masking helpers (Option B) ----
+  // Mask helpers
   function maskPath(path){
     if (!path) return '/';
     if (path.length <= 18) return path;
@@ -180,64 +175,71 @@
     }
   }
 
-  // Group + render (with masking)
-  function groupByNetwork(rows){
-    const map = new Map();
-    for (const r of rows){
-      if (!map.has(r.network)) map.set(r.network, []);
-      map.get(r.network).push(r);
-    }
-    return map;
-  }
-
+  // Render ultra-clean table
   function renderSummary(rows, urlCount, chCount){
-    const parts = [];
-    parts.push(`Rows: ${rows.length} · URLs: ${urlCount} · Channels: ${chCount}`);
-    smtSummary.textContent = parts.join('  ·  ');
+    smtSummary.textContent = `Rows: ${rows.length} · URLs: ${urlCount} · Channels: ${chCount}`;
   }
+  function renderTable(rows, showAllRows){
+    smtTbody.innerHTML = '';
+    if (!rows.length){
+      smtTbody.innerHTML = '<tr><td colspan="3" class="dim">No preview.</td></tr>';
+      smtHint.style.display = 'none';
+      return;
+    }
+    smtHint.style.display = 'block';
 
-  function renderGrouped(rows, useAll){
-    const map = groupByNetwork(rows);
-    smtPreview.innerHTML = '';
-    let shownFull = false; // only first rendered row is full
+    const limit = showAllRows ? rows.length : Math.min(rows.length, 10);
+    let firstShown = false;
 
-    for (const [net, arr] of map.entries()){
-      const grp = document.createElement('div'); grp.className='grp';
-      const title = document.createElement('div'); title.className='grp-title';
-      const h4 = document.createElement('h4'); h4.textContent = `${net} · ${arr.length} rows`;
-      const chips = document.createElement('div'); chips.className='chips';
-      const chip2 = document.createElement('span'); chip2.className='chip dim'; chip2.textContent= useAll ? 'all' : 'compact';
-      chips.appendChild(chip2);
-      title.appendChild(h4); title.appendChild(chips);
+    for (let i=0; i<limit; i++){
+      const r = rows[i];
+      const tr = document.createElement('tr');
 
-      const body = document.createElement('div'); body.className='grp-body';
-      const max = useAll ? arr.length : Math.min(2, arr.length);
-      for (let i=0; i<max; i++){
-        const r = arr[i];
-        const line1 = document.createElement('div'); line1.className='row';
-        line1.textContent = `#${r.index} ${r.channel_code}`;
+      const tdNet = document.createElement('td');
+      tdNet.innerHTML = `<span class="badge-net">${r.network_label || r.network}</span>`;
 
-        const line2 = document.createElement('div'); line2.className='row url';
-        if (!shownFull) {
-          line2.textContent = `→ ${r.final_url}`; // first row full
-          shownFull = true;
-        } else {
-          line2.textContent = `→ ${maskDisplay(r.final_url, r.subid_param, r.channel_code)}`;
-        }
-        body.appendChild(line1); body.appendChild(line2);
-      }
-      if (!useAll && arr.length > 2){
-        const more = document.createElement('div'); more.className='more';
-        more.textContent = `(+${arr.length - 2} more — enable "Show all" to expand)`;
-        body.appendChild(more);
+      const tdCh = document.createElement('td');
+      tdCh.textContent = r.channel_code;
+
+      const tdRes = document.createElement('td');
+      if (!firstShown){
+        tdRes.innerHTML = `<code>${r.final_url}</code>`;
+        firstShown = true;
+      } else {
+        tdRes.innerHTML = `<code>${maskDisplay(r.final_url, r.subid_param, r.channel_code)}</code>`;
       }
 
-      grp.appendChild(title); grp.appendChild(body);
-      smtPreview.appendChild(grp);
+      tr.appendChild(tdNet); tr.appendChild(tdCh); tr.appendChild(tdRes);
+      smtTbody.appendChild(tr);
+    }
+
+    if (!showAllRows && rows.length > limit){
+      const tr = document.createElement('tr');
+      const td = document.createElement('td');
+      td.colSpan = 3;
+      td.className = 'dim';
+      td.textContent = `+${rows.length - limit} more — enable “Show all rows in preview” to expand`;
+      tr.appendChild(td);
+      smtTbody.appendChild(tr);
     }
   }
 
-  // CSV
+  // Analyze / Export
+  function analyze(){
+    const urls = getUrlLines(), ch = getLines(channelsIn);
+    if (!urls.length) { showStatus('Add URLs.', 'err'); return; }
+    if (!ch.length)   { showStatus('Add channels.', 'err'); return; }
+    const rows = buildMatrix(urls, ch, !!keepUtms?.checked);
+    renderSummary(rows, urls.length, ch.length);
+    renderTable(rows, !!(showAll && showAll.checked));
+    showStatus('Analyze ready.', 'ok');
+  }
+
+  function ensureCredit(){
+    const n = readAff(); if (n>0) return true;
+    showStatus('No affiliate CSV credits. Click “Buy credits”.', 'warn'); return false;
+  }
+
   function downloadCsv(rows){
     const header = ["index","base_url","network","channel_code","subid_param","final_url","notes"];
     const csv = [header].concat(rows.map(r=>[
@@ -253,23 +255,6 @@
     a.href = URL.createObjectURL(blob);
     document.body.appendChild(a); a.click();
     setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 100);
-  }
-
-  // Analyze / Export
-  function analyze(){
-    const urls = getUrlLines(), ch = getLines(channelsIn);
-    if (!urls.length) { showStatus('Add URLs.', 'err'); return; }
-    if (!ch.length)   { showStatus('Add channels.', 'err'); return; }
-    const rows = buildMatrix(urls, ch, !!keepUtms?.checked);
-    renderSummary(rows, urls.length, ch.length);
-    const useAll = !!(showAll && showAll.checked);
-    renderGrouped(rows, useAll);
-    showStatus('Analyze ready.', 'ok');
-  }
-
-  function ensureCredit(){
-    const n = readAff(); if (n>0) return true;
-    showStatus('No affiliate CSV credits. Click “Buy credits”.', 'warn'); return false;
   }
 
   function exportCsv(){
@@ -311,20 +296,25 @@
     };
     ['purchased','completed','complete','order.completed','checkout.completed'].forEach(n=>{ try{ fs.builder.on(n, handler); }catch{} });
   }
-
   if (buyAffBtn){
     buyAffBtn.addEventListener('click', async ()=>{
       try{
         const fs = await waitForFS();
         registerFSEvents(fs);
         try{ fs.builder.reset(); }catch{}
-        fs.builder.add('aff5'); // default bundle; user može promeniti u checkoutu
+        fs.builder.add('aff5');
         fs.builder.checkout();
       }catch(e){ console.warn(e); showStatus('Checkout is loading… try again shortly.', 'warn'); }
     });
   }
-
-  // Try hook FS on load
   (async()=>{ try{ const fs=await waitForFS(6000); registerFSEvents(fs);}catch{} })();
 
+  // Channel normalize
+  function normalizeChannel(label){
+    let s=(label||'').toLowerCase().trim();
+    s = s.normalize ? s.normalize('NFD').replace(/[\u0300-\u036f]/g,'') : s;
+    s = s.replace(/[^a-z0-9\-_]+/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
+    if (s.length>24) s=s.slice(0,24);
+    return s;
+  }
 })();

@@ -24,7 +24,7 @@ h1{font-size:20px;margin:0}
 .wrap{max-width:860px;margin:22px auto 40px;padding:0 16px}
 .card{background:linear-gradient(180deg,#12161b,#101419);border:1px solid var(--stroke);border-radius:var(--radius);padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
 .card-title{margin:0 0 6px 0;font-size:18px}
-.muted{color:var(--muted)} .small{font-size:13px}
+.muted{color:var(--muted)} .small{font-size:13px} .tiny{font-size:12px}
 .label{display:block;font-size:14px;color:var(--muted);margin:16px 0 6px}
 
 /* Inputs / buttons */
@@ -44,19 +44,26 @@ h1{font-size:20px;margin:0}
 .status{margin-top:6px;font-size:14px}
 .status.ok{color:var(--ok)} .status.warn{color:var(--warn)} .status.err{color:var(--err)}
 
-/* SMT preview + grouping */
+/* Summary */
 .smt-summary{margin-top:6px; padding:6px 10px; border:1px dashed #2b3a4f; border-radius:10px}
-.smt-preview{margin-top:10px}
-.grp{border:1px solid var(--stroke); border-radius:12px; margin-top:10px; overflow:hidden}
-.grp-title{display:flex;align-items:center;justify-content:space-between; padding:10px 12px; background:#0f1419; cursor:pointer}
-.grp-title h4{margin:0;font-size:14px}
-.grp-title .chips{display:flex;gap:8px; align-items:center}
-.chip{display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid #2b3a4f; font-size:12px}
-.grp-body{padding:10px 12px; background:#0c1015}
-.row{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size:12.5px; line-height:1.6}
-.url{opacity:.95; word-break:break-all}
-.dim{opacity:.65}
-.more{margin-top:6px; font-size:12px; opacity:.8}
+
+/* Ultra-clean table */
+.tbl-wrap{margin-top:10px; overflow:auto}
+.tbl{width:100%; border-collapse:separate; border-spacing:0}
+.tbl thead th{
+  text-align:left; font-weight:600; font-size:13px; color:#cfd6e6;
+  background:#0f1419; border:1px solid var(--stroke); border-bottom:none; padding:10px 12px;
+}
+.tbl tbody td{
+  border:1px solid var(--stroke); border-top:none; padding:10px 12px; vertical-align:top;
+  background:#0c1015;
+}
+.tbl tbody tr:first-child td{ border-top:1px solid var(--stroke) }
+.tbl code{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size:12.5px}
+.tbl .badge-net{
+  display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid #2b3a4f; font-size:12px; color:#cfe3ff; background:#0f1419;
+}
+.dim{opacity:.7}
 
 /* Footer */
 .foot{margin-top:16px;text-align:center;font-size:13px}
