@@ -7,6 +7,7 @@
   const urlsIn       = el('urlsIn');
   const channelsIn   = el('channelsIn');
   const keepUtms     = el('keepUtms');
+  const showAll      = el('showAll');
   const analyzeBtn   = el('smtAnalyzeBtn');
   const exportBtn    = el('smtExportBtn');
   const buyAffBtn    = el('buyAffBtn');
@@ -24,6 +25,33 @@
   function showStatus(t, kind){ status.textContent=t||''; status.className='status'+(kind?(' '+kind):''); }
   function getLines(textarea){ return (textarea?.value||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean); }
   function normalizeUrlInput(raw){ let s=(raw||'').trim(); if(!s) return ''; if(!/^https?:\/\//i.test(s)) s='https://'+s; return s; }
+
+  // --- Comment stripping for URLs ---
+  // Rules:
+  //  - remove trailing parenthetical comments at end of line: " ... (comment)"
+  //  - remove inline " #comment" (space + #)
+  //  - remove inline " //" (space + //) to avoid killing "https://"
+  //  - then take the first whitespace-delimited token as URL
+  function stripUrlComment(line){
+    let s = (line || '').trim();
+    // strip trailing parenthetical notes at end
+    s = s.replace(/\s*\([^()]*\)\s*$/,'');
+    // strip " #comment"
+    s = s.replace(/\s+#.*$/,'');
+    // strip " //comment" (but not the scheme "https://")
+    s = s.replace(/\s\/\/.*$/,'');
+    // take first token
+    s = s.split(/\s+/)[0] || '';
+    return s.trim();
+  }
+
+  function getUrlLines(){
+    return (urlsIn?.value||'')
+      .split(/\r?\n/)
+      .map(stripUrlComment)
+      .map(s=>s.trim())
+      .filter(Boolean);
+  }
 
   // Reference data (networks / junk)
   const NETWORKS = [
@@ -177,16 +205,17 @@
 
   // UI handlers
   function analyze(){
-    const urls = getLines(urlsIn), ch = getLines(channelsIn);
+    const urls = getUrlLines(), ch = getLines(channelsIn);
     if (!urls.length) { showStatus('Paste affiliate URLs (one per line).', 'err'); return; }
     if (!ch.length)   { showStatus('Add at least one channel.', 'err'); return; }
     const rows = buildMatrix(urls, ch, !!keepUtms?.checked);
-    const sample = rows.slice(0, Math.min(10, rows.length));
+    const useAll = !!(showAll && showAll.checked);
+    const sample = useAll ? rows : rows.slice(0, Math.min(10, rows.length));
     const lines = [];
     lines.push(`Detected rows: ${rows.length}`);
     if (sample.length){
       lines.push('');
-      lines.push('Preview (first rows):');
+      lines.push(useAll ? 'Preview (all rows):' : 'Preview (first rows):');
       for (const r of sample){
         lines.push(`#${r.index} [${r.network}] ${r.channel_code} (${r.subid_param})`);
         lines.push(`  → ${r.final_url}`);
@@ -202,7 +231,7 @@
   }
 
   function exportCsv(){
-    const urls = getLines(urlsIn), ch = getLines(channelsIn);
+    const urls = getUrlLines(), ch = getLines(channelsIn);
     if (!urls.length) { showStatus('Paste affiliate URLs first.', 'err'); return; }
     if (!ch.length)   { showStatus('Add at least one channel.', 'err'); return; }
     if (!ensureCredit()) return;
