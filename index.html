@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SubID Matrix Tracker</title>
+  <title>SubID Matrix</title>
   <link rel="stylesheet" href="styles.css" />
   <meta name="description" content="Generate channel-tagged affiliate links in bulk. Local-only. No account." />
 
@@ -19,7 +19,7 @@
   <header class="site-header">
     <div class="brand">
       <div class="logo-dot" aria-hidden="true"></div>
-      <h1>SubID Matrix Tracker</h1>
+      <h1>SubID Matrix</h1>
     </div>
     <div class="hdr-actions">
       <span id="affCredits" class="badge-credits" title="Affiliate CSV credits">AFF: 0</span>
@@ -29,18 +29,17 @@
 
   <main class="wrap">
     <section class="card">
-      <h2 class="card-title">Bulk channel-tagged affiliate links → CSV</h2>
+      <h2 class="card-title">Create channel-tagged affiliate links → CSV</h2>
       <p class="muted small">
-        Paste your affiliate links (Amazon, CJ, Awin, Impact, Rakuten, eBay, ClickBank…). We preserve critical
+        Paste your affiliate links (Amazon, CJ, Awin, Impact, Rakuten, eBay, ClickBank…). We keep critical
         affiliate params and add a per-channel SubID (e.g., Amazon <code>ascsubtag</code>, Awin <code>clickref</code>).
-        Analyze is free. CSV export costs 1 credit.
       </p>
 
-      <label for="urlsIn" class="label">Affiliate URLs (one per line)</label>
+      <label for="urlsIn" class="label">Affiliate URLs <span class="dim">(one per line)</span></label>
       <textarea id="urlsIn" class="input" rows="6" placeholder="https://www.amazon.com/dp/ASIN?tag=yourtag-20
 https://go.awin.link/…"></textarea>
 
-      <label for="channelsIn" class="label">Channels (one per line)</label>
+      <label for="channelsIn" class="label">Channels <span class="dim">(one per line)</span></label>
       <textarea id="channelsIn" class="input" rows="3" placeholder="youtube_desc
 ig_bio
 newsletter_aug"></textarea>
@@ -57,11 +56,10 @@ newsletter_aug"></textarea>
       </div>
 
       <div class="result-actions" style="margin-top:12px">
-        <button id="useExampleBtn" class="btn">Use example</button>
-        <div class="spacer"></div>
-        <button id="smtAnalyzeBtn" class="btn">Analyze (free)</button>
-        <button id="smtExportBtn" class="btn primary">Export SubID CSV (–1 credit)</button>
+        <button id="smtAnalyzeBtn" class="btn">Analyze</button>
+        <button id="smtExportBtn" class="btn primary">Export CSV</button>
       </div>
+      <p class="muted small" style="margin-top:6px">Export costs 1 credit and includes all rows.</p>
 
       <!-- Summary + grouped preview -->
       <div id="status" class="status" role="status" aria-live="polite" style="margin-top:10px"></div>
@@ -70,7 +68,7 @@ newsletter_aug"></textarea>
     </section>
 
     <footer class="foot muted">
-      <span>Local-only • No tracking • No external requests</span>
+      <span>Local-only • No account • No tracking</span>
     </footer>
   </main>
 

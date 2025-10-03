@@ -1,4 +1,4 @@
-// SubID Matrix Tracker — affiliate-only (grouped preview, example fill, comment stripping, masked preview B)
+// SubID Matrix — affiliate-only (grouped preview, masked preview B, no example button)
 
 (function(){
   const el = (id) => document.getElementById(id);
@@ -11,7 +11,6 @@
   const analyzeBtn   = el('smtAnalyzeBtn');
   const exportBtn    = el('smtExportBtn');
   const buyAffBtn    = el('buyAffBtn');
-  const useExampleBtn= el('useExampleBtn');
   const status       = el('status');
   const affBadge     = el('affCredits');
 
@@ -32,9 +31,9 @@
   // --- Comment stripping for URLs ---
   function stripUrlComment(line){
     let s = (line || '').trim();
-    s = s.replace(/\s*\([^()]*\)\s*$/,'');
-    s = s.replace(/\s+#.*$/,'');
-    s = s.replace(/\s\/\/.*$/,'');
+    s = s.replace(/\s*\([^()]*\)\s*$/,''); // (comment)
+    s = s.replace(/\s+#.*$/,'');           //  #comment
+    s = s.replace(/\s\/\/.*$/,'');         //  //comment (not scheme)
     s = s.split(/\s+/)[0] || '';
     return s.trim();
   }
@@ -66,21 +65,6 @@
     "fbclid","gclid","ttclid","yclid","msclkid","icid","scid","mc_eid","mc_cid","_hsmi","_hsenc","_branch_match_id"
   ];
   const SHORTENER_HOSTS = /(^|\.)((bit\.ly)|(t\.co)|(goo\.gl)|(tinyurl\.com)|(ow\.ly)|(buff\.ly)|(is\.gd)|(cutt\.ly)|(rebrand\.ly)|(lnkd\.in)|(t\.ly)|(s\.id)|(shorturl\.at)|(amzn\.to))$/i;
-  const PLACEMENT_NOTES = {
-    youtube_desc:"Links are clickable in the description; pin a comment with the same link.",
-    youtube_pinned:"Pinned comment is visible on mobile; include a short call-to-action.",
-    ig_bio:"Links in captions are NOT clickable; put the link in the bio or use story link sticker.",
-    ig_story:"Use the 'Link' sticker; URLs are clickable via sticker only.",
-    tiktok_bio:"Only 1 bio link is clickable; consider Link-in-Bio tools if needed.",
-    tiktok_desc:"Links in video descriptions are usually NOT clickable; push bio link/QR.",
-    twitter_post:"Clickable link; avoid overly long parameters; use one canonical link per tweet.",
-    facebook_post:"Clickable; preview sometimes caches—update OG tags if needed.",
-    linkedin_post:"Clickable; first link often becomes preview; keep it clean.",
-    pinterest_pin:"Single destination URL; keep it short and consistent.",
-    newsletter_aug:"Most email clients make URLs clickable; avoid tracking bloat to reduce spam flags.",
-    reddit_post:"Clickable in many subs; follow subreddit rules about affiliate disclosure.",
-    blog_article:"Use canonical product URLs and consistent SubIDs per placement."
-  };
 
   // Normalizers
   function normalizeChannel(label){
@@ -160,7 +144,6 @@
         if (rec.id==='amazon' && /\/gp\/product/i.test(init)) noteBits.push('AMAZON_CANONICALIZED');
         if (!keepUTMs) noteBits.push('UTM_REMOVED');
         if (shortWarn) noteBits.push(shortWarn);
-        if (PLACEMENT_NOTES[ch]) noteBits.push(PLACEMENT_NOTES[ch]);
         rows.push({
           index: ++i,
           base_url: preserved,
@@ -180,7 +163,6 @@
     if (!path) return '/';
     if (path.length <= 18) return path;
     const parts = path.split('/');
-    // try to keep last segment partially
     const last = parts.pop() || '';
     const shortLast = last.length>10 ? (last.slice(0,6)+'…') : last;
     const base = parts.join('/') || '';
@@ -192,9 +174,9 @@
       const url = new URL(u);
       const host = url.hostname.replace(/^www\./,'');
       const path = maskPath(url.pathname || '/');
-      return `${host}${path} ? ${paramKey}=<${channelCode}>`;
+      return `${host}${path} · ${paramKey}=<${channelCode}>`;
     }catch{
-      return `… ? ${paramKey}=<${channelCode}>`;
+      return `… · ${paramKey}=<${channelCode}>`;
     }
   }
 
@@ -209,13 +191,8 @@
   }
 
   function renderSummary(rows, urlCount, chCount){
-    const map = groupByNetwork(rows);
     const parts = [];
     parts.push(`Rows: ${rows.length} · URLs: ${urlCount} · Channels: ${chCount}`);
-    const nets = [];
-    for (const [net, arr] of map.entries()){ nets.push(`${net}(${arr.length})`); }
-    if (nets.length) parts.push('Networks: ' + nets.join(', '));
-    parts.push('Preview shows 1 full row; others are masked (domain+path, param pattern only).');
     smtSummary.textContent = parts.join('  ·  ');
   }
 
@@ -229,9 +206,8 @@
       const title = document.createElement('div'); title.className='grp-title';
       const h4 = document.createElement('h4'); h4.textContent = `${net} · ${arr.length} rows`;
       const chips = document.createElement('div'); chips.className='chips';
-      const chip1 = document.createElement('span'); chip1.className='chip dim'; chip1.textContent='preview';
       const chip2 = document.createElement('span'); chip2.className='chip dim'; chip2.textContent= useAll ? 'all' : 'compact';
-      chips.appendChild(chip1); chips.appendChild(chip2);
+      chips.appendChild(chip2);
       title.appendChild(h4); title.appendChild(chips);
 
       const body = document.createElement('div'); body.className='grp-body';
@@ -239,18 +215,15 @@
       for (let i=0; i<max; i++){
         const r = arr[i];
         const line1 = document.createElement('div'); line1.className='row';
-        line1.textContent = `#${r.index} (${r.subid_param}) ${r.channel_code}`;
+        line1.textContent = `#${r.index} ${r.channel_code}`;
 
         const line2 = document.createElement('div'); line2.className='row url';
         if (!shownFull) {
-          // first row overall → show full
-          line2.textContent = `→ ${r.final_url}`;
+          line2.textContent = `→ ${r.final_url}`; // first row full
           shownFull = true;
         } else {
-          // masked view (no full query / destination)
           line2.textContent = `→ ${maskDisplay(r.final_url, r.subid_param, r.channel_code)}`;
         }
-
         body.appendChild(line1); body.appendChild(line2);
       }
       if (!useAll && arr.length > 2){
@@ -264,7 +237,7 @@
     }
   }
 
-  // CSV (no change)
+  // CSV
   function downloadCsv(rows){
     const header = ["index","base_url","network","channel_code","subid_param","final_url","notes"];
     const csv = [header].concat(rows.map(r=>[
@@ -285,8 +258,8 @@
   // Analyze / Export
   function analyze(){
     const urls = getUrlLines(), ch = getLines(channelsIn);
-    if (!urls.length) { showStatus('Paste affiliate URLs (one per line).', 'err'); return; }
-    if (!ch.length)   { showStatus('Add at least one channel.', 'err'); return; }
+    if (!urls.length) { showStatus('Add URLs.', 'err'); return; }
+    if (!ch.length)   { showStatus('Add channels.', 'err'); return; }
     const rows = buildMatrix(urls, ch, !!keepUtms?.checked);
     renderSummary(rows, urls.length, ch.length);
     const useAll = !!(showAll && showAll.checked);
@@ -301,8 +274,8 @@
 
   function exportCsv(){
     const urls = getUrlLines(), ch = getLines(channelsIn);
-    if (!urls.length) { showStatus('Paste affiliate URLs first.', 'err'); return; }
-    if (!ch.length)   { showStatus('Add at least one channel.', 'err'); return; }
+    if (!urls.length) { showStatus('Add URLs.', 'err'); return; }
+    if (!ch.length)   { showStatus('Add channels.', 'err'); return; }
     if (!ensureCredit()) return;
     const rows = buildMatrix(urls, ch, !!keepUtms?.checked);
     if (!rows.length){ showStatus('Nothing to export.', 'err'); return; }
@@ -313,23 +286,6 @@
 
   if (analyzeBtn) analyzeBtn.addEventListener('click', analyze);
   if (exportBtn)  exportBtn.addEventListener('click', exportCsv);
-
-  // Example fill
-  if (useExampleBtn){
-    useExampleBtn.addEventListener('click', ()=>{
-      urlsIn.value = [
-        'https://www.amazon.com/gp/product/B08N5WRWNW?tag=yourtag-20&qid=123&sr=2-3&ref=something&utm_source=x',
-        'https://amzn.to/3ABCDEF',
-        'https://rover.ebay.com/rover/1/711-53200-19255-0/1?campid=5338765432&mpre=https%3A%2F%2Fwww.ebay.com%2Fitm%2F1234567890&utm_campaign=test',
-        'https://anrdoezrs.net/click-0000000-0000000?url=https%3A%2F%2Fmerchant.com%2Fdeal%3Fsku%3DABC%26utm_source%3Dnewsletter',
-        'https://go.awin.link/abc123?u=https%3A%2F%2Fstore.example.com%2Fprod%3Faff_id%3D55%26utm_medium%3Dsocial',
-        'https://hop.clickbank.net/?affiliate=myname&vendor=vendorx',
-        'https://site.example.com/page?ref=xyz&utm_source=twitter&fbclid=123'
-      ].join('\n');
-      channelsIn.value = ['youtube_desc','ig_bio','tiktok_bio','newsletter_aug'].join('\n');
-      showStatus('Example inserted. Click Analyze.', 'ok');
-    });
-  }
 
   // FastSpring glue (AFF1/AFF5/AFF20)
   async function waitForFS(ms=4000){
