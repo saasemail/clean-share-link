@@ -1,4 +1,4 @@
-// SubID Matrix Tracker — affiliate-only build (no deps, local-only)
+// SubID Matrix Tracker — affiliate-only (grouped preview, example fill, comment stripping)
 
 (function(){
   const el = (id) => document.getElementById(id);
@@ -11,9 +11,12 @@
   const analyzeBtn   = el('smtAnalyzeBtn');
   const exportBtn    = el('smtExportBtn');
   const buyAffBtn    = el('buyAffBtn');
-  const preview      = el('smtPreview');
+  const useExampleBtn= el('useExampleBtn');
   const status       = el('status');
   const affBadge     = el('affCredits');
+
+  const smtSummary   = el('smtSummary');
+  const smtPreview   = el('smtPreview');
 
   // Credits
   const AFF_CREDITS_KEY = 'csl_aff_credits';
@@ -27,30 +30,18 @@
   function normalizeUrlInput(raw){ let s=(raw||'').trim(); if(!s) return ''; if(!/^https?:\/\//i.test(s)) s='https://'+s; return s; }
 
   // --- Comment stripping for URLs ---
-  // Rules:
-  //  - remove trailing parenthetical comments at end of line: " ... (comment)"
-  //  - remove inline " #comment" (space + #)
-  //  - remove inline " //" (space + //) to avoid killing "https://"
-  //  - then take the first whitespace-delimited token as URL
+  // - strip trailing "(...)"   - strip " #comment"   - strip " //comment" (not the https://)  - take first token
   function stripUrlComment(line){
     let s = (line || '').trim();
-    // strip trailing parenthetical notes at end
     s = s.replace(/\s*\([^()]*\)\s*$/,'');
-    // strip " #comment"
     s = s.replace(/\s+#.*$/,'');
-    // strip " //comment" (but not the scheme "https://")
     s = s.replace(/\s\/\/.*$/,'');
-    // take first token
     s = s.split(/\s+/)[0] || '';
     return s.trim();
   }
-
   function getUrlLines(){
     return (urlsIn?.value||'')
-      .split(/\r?\n/)
-      .map(stripUrlComment)
-      .map(s=>s.trim())
-      .filter(Boolean);
+      .split(/\r?\n/).map(stripUrlComment).map(s=>s.trim()).filter(Boolean);
   }
 
   // Reference data (networks / junk)
@@ -185,6 +176,60 @@
     return rows;
   }
 
+  // Group + render
+  function groupByNetwork(rows){
+    const map = new Map();
+    for (const r of rows){
+      if (!map.has(r.network)) map.set(r.network, []);
+      map.get(r.network).push(r);
+    }
+    return map;
+  }
+
+  function renderSummary(rows, urlCount, chCount){
+    const map = groupByNetwork(rows);
+    const parts = [];
+    parts.push(`Rows: ${rows.length} · URLs: ${urlCount} · Channels: ${chCount}`);
+    const nets = [];
+    for (const [net, arr] of map.entries()){ nets.push(`${net}(${arr.length})`); }
+    if (nets.length) parts.push('Networks: ' + nets.join(', '));
+    smtSummary.textContent = parts.join('  ·  ');
+  }
+
+  function renderGrouped(rows, useAll){
+    const map = groupByNetwork(rows);
+    smtPreview.innerHTML = '';
+    for (const [net, arr] of map.entries()){
+      const grp = document.createElement('div'); grp.className='grp';
+      const title = document.createElement('div'); title.className='grp-title';
+      const h4 = document.createElement('h4'); h4.textContent = `${net} · ${arr.length} rows`;
+      const chips = document.createElement('div'); chips.className='chips';
+      const chip1 = document.createElement('span'); chip1.className='chip dim'; chip1.textContent='preview';
+      const chip2 = document.createElement('span'); chip2.className='chip dim'; chip2.textContent= useAll ? 'all' : 'compact';
+      chips.appendChild(chip1); chips.appendChild(chip2);
+      title.appendChild(h4); title.appendChild(chips);
+
+      const body = document.createElement('div'); body.className='grp-body';
+      const max = useAll ? arr.length : Math.min(2, arr.length);
+      for (let i=0; i<max; i++){
+        const r = arr[i];
+        const line1 = document.createElement('div'); line1.className='row';
+        line1.textContent = `#${r.index} (${r.subid_param}) ${r.channel_code}`;
+        const line2 = document.createElement('div'); line2.className='row url';
+        line2.textContent = `→ ${r.final_url}`;
+        body.appendChild(line1); body.appendChild(line2);
+      }
+      if (!useAll && arr.length > 2){
+        const more = document.createElement('div'); more.className='more';
+        more.textContent = `(+${arr.length - 2} more — enable "Show all" to expand)`;
+        body.appendChild(more);
+      }
+
+      grp.appendChild(title); grp.appendChild(body);
+      smtPreview.appendChild(grp);
+    }
+  }
+
   // CSV
   function downloadCsv(rows){
     const header = ["index","base_url","network","channel_code","subid_param","final_url","notes"];
@@ -203,25 +248,15 @@
     setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 100);
   }
 
-  // UI handlers
+  // Analyze / Export
   function analyze(){
     const urls = getUrlLines(), ch = getLines(channelsIn);
     if (!urls.length) { showStatus('Paste affiliate URLs (one per line).', 'err'); return; }
     if (!ch.length)   { showStatus('Add at least one channel.', 'err'); return; }
     const rows = buildMatrix(urls, ch, !!keepUtms?.checked);
+    renderSummary(rows, urls.length, ch.length);
     const useAll = !!(showAll && showAll.checked);
-    const sample = useAll ? rows : rows.slice(0, Math.min(10, rows.length));
-    const lines = [];
-    lines.push(`Detected rows: ${rows.length}`);
-    if (sample.length){
-      lines.push('');
-      lines.push(useAll ? 'Preview (all rows):' : 'Preview (first rows):');
-      for (const r of sample){
-        lines.push(`#${r.index} [${r.network}] ${r.channel_code} (${r.subid_param})`);
-        lines.push(`  → ${r.final_url}`);
-      }
-    }
-    preview.textContent = lines.join('\n');
+    renderGrouped(rows, useAll);
     showStatus('Analyze ready.', 'ok');
   }
 
@@ -244,6 +279,23 @@
 
   if (analyzeBtn) analyzeBtn.addEventListener('click', analyze);
   if (exportBtn)  exportBtn.addEventListener('click', exportCsv);
+
+  // Example fill
+  if (useExampleBtn){
+    useExampleBtn.addEventListener('click', ()=>{
+      urlsIn.value = [
+        'https://www.amazon.com/gp/product/B08N5WRWNW?tag=yourtag-20&qid=123&sr=2-3&ref=something&utm_source=x',
+        'https://amzn.to/3ABCDEF',
+        'https://rover.ebay.com/rover/1/711-53200-19255-0/1?campid=5338765432&mpre=https%3A%2F%2Fwww.ebay.com%2Fitm%2F1234567890&utm_campaign=test',
+        'https://anrdoezrs.net/click-0000000-0000000?url=https%3A%2F%2Fmerchant.com%2Fdeal%3Fsku%3DABC%26utm_source%3Dnewsletter',
+        'https://go.awin.link/abc123?u=https%3A%2F%2Fstore.example.com%2Fprod%3Faff_id%3D55%26utm_medium%3Dsocial',
+        'https://hop.clickbank.net/?affiliate=myname&vendor=vendorx',
+        'https://site.example.com/page?ref=xyz&utm_source=twitter&fbclid=123'
+      ].join('\n');
+      channelsIn.value = ['youtube_desc','ig_bio','tiktok_bio','newsletter_aug'].join('\n');
+      showStatus('Example inserted. Click Analyze.', 'ok');
+    });
+  }
 
   // FastSpring glue (AFF1/AFF5/AFF20)
   async function waitForFS(ms=4000){

@@ -38,15 +38,25 @@ h1{font-size:20px;margin:0}
 .btn.primary{background:linear-gradient(180deg,#1a2330,#141a21);border-color:#2b3a4f}
 .btn.subtle{opacity:.9}
 .result-actions{display:flex;gap:10px;margin-top:10px}
+.spacer{flex:1}
 
 /* States */
 .status{margin-top:6px;font-size:14px}
 .status.ok{color:var(--ok)} .status.warn{color:var(--warn)} .status.err{color:var(--err)}
 
-/* SMT preview */
-.smt-preview{margin-top:10px;white-space:pre-wrap}
-.badge-net{display:inline-block;padding:2px 6px;border-radius:6px;border:1px solid var(--stroke);font-size:12px;margin-right:6px}
-.badge-param{display:inline-block;padding:2px 6px;border-radius:6px;border:1px dashed #2b3a4f;font-size:12px}
+/* SMT preview + grouping */
+.smt-summary{margin-top:6px; padding:6px 10px; border:1px dashed #2b3a4f; border-radius:10px}
+.smt-preview{margin-top:10px}
+.grp{border:1px solid var(--stroke); border-radius:12px; margin-top:10px; overflow:hidden}
+.grp-title{display:flex;align-items:center;justify-content:space-between; padding:10px 12px; background:#0f1419; cursor:pointer}
+.grp-title h4{margin:0;font-size:14px}
+.grp-title .chips{display:flex;gap:8px; align-items:center}
+.chip{display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid #2b3a4f; font-size:12px}
+.grp-body{padding:10px 12px; background:#0c1015}
+.row{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size:12.5px; line-height:1.6}
+.url{opacity:.95; word-break:break-all}
+.dim{opacity:.65}
+.more{margin-top:6px; font-size:12px; opacity:.8}
 
 /* Footer */
 .foot{margin-top:16px;text-align:center;font-size:13px}
