@@ -1,4 +1,4 @@
-// SubID Matrix Tracker — affiliate-only (grouped preview, example fill, comment stripping)
+// SubID Matrix Tracker — affiliate-only (grouped preview, example fill, comment stripping, masked preview B)
 
 (function(){
   const el = (id) => document.getElementById(id);
@@ -30,7 +30,6 @@
   function normalizeUrlInput(raw){ let s=(raw||'').trim(); if(!s) return ''; if(!/^https?:\/\//i.test(s)) s='https://'+s; return s; }
 
   // --- Comment stripping for URLs ---
-  // - strip trailing "(...)"   - strip " #comment"   - strip " //comment" (not the https://)  - take first token
   function stripUrlComment(line){
     let s = (line || '').trim();
     s = s.replace(/\s*\([^()]*\)\s*$/,'');
@@ -176,7 +175,30 @@
     return rows;
   }
 
-  // Group + render
+  // ---- Masking helpers (Option B) ----
+  function maskPath(path){
+    if (!path) return '/';
+    if (path.length <= 18) return path;
+    const parts = path.split('/');
+    // try to keep last segment partially
+    const last = parts.pop() || '';
+    const shortLast = last.length>10 ? (last.slice(0,6)+'…') : last;
+    const base = parts.join('/') || '';
+    const shortBase = base.length>8 ? (base.slice(0,8)+'…') : base;
+    return (shortBase ? '/'+shortBase : '') + (shortLast ? '/'+shortLast : '/');
+  }
+  function maskDisplay(u, paramKey, channelCode){
+    try{
+      const url = new URL(u);
+      const host = url.hostname.replace(/^www\./,'');
+      const path = maskPath(url.pathname || '/');
+      return `${host}${path} ? ${paramKey}=<${channelCode}>`;
+    }catch{
+      return `… ? ${paramKey}=<${channelCode}>`;
+    }
+  }
+
+  // Group + render (with masking)
   function groupByNetwork(rows){
     const map = new Map();
     for (const r of rows){
@@ -193,12 +215,15 @@
     const nets = [];
     for (const [net, arr] of map.entries()){ nets.push(`${net}(${arr.length})`); }
     if (nets.length) parts.push('Networks: ' + nets.join(', '));
+    parts.push('Preview shows 1 full row; others are masked (domain+path, param pattern only).');
     smtSummary.textContent = parts.join('  ·  ');
   }
 
   function renderGrouped(rows, useAll){
     const map = groupByNetwork(rows);
     smtPreview.innerHTML = '';
+    let shownFull = false; // only first rendered row is full
+
     for (const [net, arr] of map.entries()){
       const grp = document.createElement('div'); grp.className='grp';
       const title = document.createElement('div'); title.className='grp-title';
@@ -215,8 +240,17 @@
         const r = arr[i];
         const line1 = document.createElement('div'); line1.className='row';
         line1.textContent = `#${r.index} (${r.subid_param}) ${r.channel_code}`;
+
         const line2 = document.createElement('div'); line2.className='row url';
-        line2.textContent = `→ ${r.final_url}`;
+        if (!shownFull) {
+          // first row overall → show full
+          line2.textContent = `→ ${r.final_url}`;
+          shownFull = true;
+        } else {
+          // masked view (no full query / destination)
+          line2.textContent = `→ ${maskDisplay(r.final_url, r.subid_param, r.channel_code)}`;
+        }
+
         body.appendChild(line1); body.appendChild(line2);
       }
       if (!useAll && arr.length > 2){
@@ -230,7 +264,7 @@
     }
   }
 
-  // CSV
+  // CSV (no change)
   function downloadCsv(rows){
     const header = ["index","base_url","network","channel_code","subid_param","final_url","notes"];
     const csv = [header].concat(rows.map(r=>[
