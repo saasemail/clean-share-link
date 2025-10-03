@@ -34,6 +34,7 @@ body{
   box-shadow: 0 0 18px rgba(116,240,192,.45);
 }
 h1{font-size:20px; margin:0}
+.hdr-actions{display:flex; align-items:center; gap:10px}
 
 .badge-pro{
   border:1px solid var(--stroke);
@@ -44,6 +45,15 @@ h1{font-size:20px; margin:0}
   cursor:pointer;
 }
 .badge-pro:hover{border-color:#243041}
+
+.badge-credits{
+  border:1px solid var(--stroke);
+  background:linear-gradient(180deg,#141a21,#10151b);
+  color:#b6c8ff;
+  padding:6px 10px;
+  border-radius:10px;
+  font-size:13px;
+}
 
 .wrap{max-width:860px; margin:22px auto 40px; padding:0 16px}
 .card{
@@ -125,6 +135,16 @@ h1{font-size:20px; margin:0}
   border-color:#2a3746;
 }
 
+.smt-head{display:flex; align-items:center; gap:8px}
+.badge.beta{
+  border:1px solid var(--stroke);
+  color:#b3f7d9;
+  background:rgba(116,240,192,.08);
+  padding:2px 8px; border-radius:8px; font-size:12px;
+}
+.badge-net{display:inline-block; padding:2px 6px; border-radius:6px; border:1px solid var(--stroke); font-size:12px; margin-right:6px}
+.badge-param{display:inline-block; padding:2px 6px; border-radius:6px; border:1px dashed #2b3a4f; font-size:12px}
+.smt-preview{margin-top:10px; white-space:pre-wrap}
 .foot{margin-top:16px; text-align:center; font-size:13px}
 
 /* Modal */
