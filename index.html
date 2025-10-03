@@ -30,13 +30,44 @@
   <main class="wrap">
     <section class="card">
       <h2 class="card-title">Create channel-tagged affiliate links → CSV</h2>
+
+      <!-- Hero microcopy -->
       <p class="muted small">
-        Paste affiliate URLs and channels. We keep critical affiliate params and add a per-channel SubID.
+        Paste your affiliate URLs and channel labels. SubID Matrix preserves critical affiliate parameters and adds the correct
+        per-network SubID (<code>ascsubtag</code> for Amazon, <code>clickref</code> for Awin, <code>sid</code> for CJ, <code>customid</code> for eBay,
+        <code>subId</code> for Impact, <code>u1</code> for Rakuten, <code>tid</code> for ClickBank). We also canonicalize Amazon links and remove UTMs.
       </p>
 
+      <div class="grid-two">
+        <div class="blk">
+          <h3 class="mini-h">Who it’s for</h3>
+          <ul class="mini-list">
+            <li>Creators & publishers (YouTube, IG, TikTok, newsletters)</li>
+            <li>Agencies & OPM teams (clean handover / QA)</li>
+            <li>Solo affiliates + VAs (fast, error-proof delivery)</li>
+          </ul>
+        </div>
+        <div class="blk">
+          <h3 class="mini-h">Benefits</h3>
+          <ul class="mini-list">
+            <li>Correct SubID param per network (no lost commission)</li>
+            <li>Clean, canonical URLs (e.g., Amazon <code>/dp/ASIN</code>, no UTMs)</li>
+            <li>N×M expansion (N URLs × M channels) in one click</li>
+            <li>CSV artifact for Sheets, VA workflows, automation</li>
+            <li>Local-only • No account • No tracking</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="callout note">
+        <strong>NOTE:</strong> Preview shows only <em>one</em> full URL; all other rows are masked. Complete results are available via
+        <strong>Export CSV</strong> (paid with credits).
+      </div>
+
+      <!-- Inputs -->
       <label for="urlsIn" class="label">Affiliate URLs <span class="dim">(one per line)</span></label>
       <textarea id="urlsIn" class="input" rows="6" placeholder="https://www.amazon.com/dp/ASIN?tag=yourtag-20
-https://go.awin.link/…"></textarea>
+https://go.awin.link/..."></textarea>
 
       <label for="channelsIn" class="label">Channels <span class="dim">(one per line)</span></label>
       <textarea id="channelsIn" class="input" rows="3" placeholder="youtube_desc
@@ -60,6 +91,7 @@ newsletter_aug"></textarea>
       </div>
       <p class="muted small" style="margin-top:6px">Export costs 1 credit and includes all rows.</p>
 
+      <!-- Status + Summary -->
       <div id="status" class="status" role="status" aria-live="polite" style="margin-top:10px"></div>
       <div id="smtSummary" class="smt-summary muted small"></div>
 

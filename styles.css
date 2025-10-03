@@ -27,6 +27,18 @@ h1{font-size:20px;margin:0}
 .muted{color:var(--muted)} .small{font-size:13px} .tiny{font-size:12px}
 .label{display:block;font-size:14px;color:var(--muted);margin:16px 0 6px}
 
+/* Mini info blocks (who/benefits) */
+.grid-two{display:grid;grid-template-columns:1fr;gap:12px;margin:12px 0 8px}
+@media (min-width:720px){ .grid-two{grid-template-columns:1fr 1fr} }
+.mini-h{margin:0 0 6px 0;font-size:13px;color:#cfd6e6}
+.mini-list{margin:0;padding-left:16px}
+.mini-list li{margin:4px 0}
+
+/* Callout note */
+.callout{border:1px solid var(--stroke);border-radius:12px;padding:10px 12px;background:#0f1419;margin:10px 0}
+.callout.note{border-color:#2b3a4f}
+.callout strong{color:#cfe3ff}
+
 /* Inputs / buttons */
 .input,.output{width:100%;background:#0e1216;color:var(--ink);border:1px solid #1c232d;border-radius:12px;padding:12px 12px;resize:vertical}
 .input:focus,.output:focus{outline:none;box-shadow:var(--focus);border-color:#2a3746}
