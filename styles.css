@@ -34,6 +34,22 @@ h1{font-size:20px;margin:0}
 .mini-list{margin:0;padding-left:16px}
 .mini-list li{margin:4px 0}
 
+/* Collapsible */
+.collapse-ctl{display:none}
+.collapse-body{max-height:520px;overflow:hidden;transition:max-height .25s ease}
+.collapse-toggle{
+  display:flex;align-items:center;gap:8px;cursor:pointer;
+  color:var(--muted);font-size:13px;margin:2px 0 10px 0;user-select:none;
+}
+.collapse-toggle .arrow{
+  width:10px;height:10px;display:inline-block;transform:rotate(180deg);
+  border-right:2px solid #7fa7ff;border-bottom:2px solid #7fa7ff; /* caret */
+  transform-origin:center; transition:transform .2s ease, opacity .2s ease;
+}
+.collapse-ctl:not(:checked) + .collapse-body{max-height:0}
+.collapse-ctl:not(:checked) + .collapse-body + .collapse-toggle .arrow{transform:rotate(45deg)} /* down */
+.collapse-ctl:not(:checked) + .collapse-body + .collapse-toggle .collapse-text{opacity:.85}
+
 /* Callout note */
 .callout{border:1px solid var(--stroke);border-radius:12px;padding:10px 12px;background:#0f1419;margin:10px 0}
 .callout.note{border-color:#2b3a4f}

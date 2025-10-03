@@ -38,26 +38,39 @@
         <code>subId</code> for Impact, <code>u1</code> for Rakuten, <code>tid</code> for ClickBank). We also canonicalize Amazon links and remove UTMs.
       </p>
 
-      <div class="grid-two">
-        <div class="blk">
-          <h3 class="mini-h">Who it’s for</h3>
-          <ul class="mini-list">
-            <li>Creators & publishers (YouTube, IG, TikTok, newsletters)</li>
-            <li>Agencies & OPM teams (clean handover / QA)</li>
-            <li>Solo affiliates + VAs (fast, error-proof delivery)</li>
-          </ul>
-        </div>
-        <div class="blk">
-          <h3 class="mini-h">Benefits</h3>
-          <ul class="mini-list">
-            <li>Correct SubID param per network (no lost commission)</li>
-            <li>Clean, canonical URLs (e.g., Amazon <code>/dp/ASIN</code>, no UTMs)</li>
-            <li>N×M expansion (N URLs × M channels) in one click</li>
-            <li>CSV artifact for Sheets, VA workflows, automation</li>
-            <li>Local-only • No account • No tracking</li>
-          </ul>
+      <!-- Collapsible: Who / Benefits -->
+      <!-- checkbox controller (hidden) -->
+      <input type="checkbox" id="heroCtl" class="collapse-ctl" checked>
+
+      <!-- body that collapses -->
+      <div class="collapse-body" id="heroBody">
+        <div class="grid-two">
+          <div class="blk">
+            <h3 class="mini-h">Who it’s for</h3>
+            <ul class="mini-list">
+              <li>Creators & publishers (YouTube, IG, TikTok, newsletters)</li>
+              <li>Agencies & OPM teams (clean handover / QA)</li>
+              <li>Solo affiliates + VAs (fast, error-proof delivery)</li>
+            </ul>
+          </div>
+          <div class="blk">
+            <h3 class="mini-h">Benefits</h3>
+            <ul class="mini-list">
+              <li>Correct SubID param per network (no lost commission)</li>
+              <li>Clean, canonical URLs (e.g., Amazon <code>/dp/ASIN</code>, no UTMs)</li>
+              <li>N×M expansion (N URLs × M channels) in one click</li>
+              <li>CSV artifact for Sheets, VA workflows, automation</li>
+              <li>Local-only • No account • No tracking</li>
+            </ul>
+          </div>
         </div>
       </div>
+
+      <!-- toggle arrow below the section -->
+      <label for="heroCtl" class="collapse-toggle" aria-controls="heroBody">
+        <span class="arrow" aria-hidden="true"></span>
+        <span class="collapse-text">Show / hide details</span>
+      </label>
 
       <div class="callout note">
         <strong>NOTE:</strong> Preview shows only <em>one</em> full URL; all other rows are masked. Complete results are available via
