@@ -68,7 +68,7 @@ h1{font-size:20px;margin:0}
 .toggles{display:flex;gap:18px;flex-wrap:wrap;margin:6px 0 4px}
 .toggle{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink)}
 .toggle input{width:18px;height:18px;accent-color:var(--accent)}
-.btn{background:#141a21;border:1px solid #243041;color:var(--ink);padding:10px 14px;border-radius:10px;cursor:pointer}
+.btn{background:#141a21;border:1px solid #243041;color:#fff;padding:10px 14px;border-radius:10px;cursor:pointer}
 .btn:hover{border-color:#304055}
 .btn.primary{background:linear-gradient(180deg,#1a2330,#141a21);border-color:#2b3a4f}
 .btn.subtle{opacity:.9}
@@ -84,17 +84,46 @@ h1{font-size:20px;margin:0}
 
 /* Ultra-clean table */
 .tbl-wrap{margin-top:10px; overflow:auto}
-.tbl{width:100%; border-collapse:separate; border-spacing:0}
+.tbl{
+  width:100%;
+  border-collapse:separate; border-spacing:0;
+  table-layout:fixed;               /* ← stabilna širina kolona */
+}
 .tbl thead th{
   text-align:left; font-weight:600; font-size:13px; color:#cfd6e6;
-  background:#0f1419; border:1px solid var(--stroke); border-bottom:none; padding:10px 12px;
+  background:#0f1419; border:1px solid var(--stroke); border-bottom:none;
+  padding:12px 14px;                /* ↑ više daha u headeru */
+  line-height:1.4;
 }
+/* Fiksiramo prve dve kolone; treća uzima ostatak */
+.tbl thead th:nth-child(1){ width:120px; }
+.tbl thead th:nth-child(2){ width:160px; }
+.tbl thead th:nth-child(3){ width:auto; }
+
 .tbl tbody td{
-  border:1px solid var(--stroke); border-top:none; padding:10px 12px; vertical-align:top;
-  background:#0c1015;
+  border:1px solid var(--stroke); border-top:none;
+  padding:12px 14px;                /* ↑ više prostora u ćelijama */
+  line-height:1.55;                 /* bolja čitljivost višerednih URL-ova */
+  vertical-align:top; background:#0c1015;
+  word-wrap:break-word;             /* fallback */
 }
 .tbl tbody tr:first-child td{ border-top:1px solid var(--stroke) }
-.tbl code{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size:12.5px}
+
+/* URL-ovi: agresivno prelamanje i čitljiviji font/razmak */
+.tbl code{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size:13.5px;                 /* malko veće */
+  line-height:1.6;                  /* rasterećeno */
+  white-space:normal;               /* dozvoli prelamanje */
+  overflow-wrap:anywhere;           /* prelamaj bilo gde */
+  word-break:break-word;            /* i u najgorim slučajevima */
+}
+
+/* Zebra + hover za lakše praćenje reda */
+.tbl tbody tr:nth-child(odd) td{ background:#0d1218; }
+.tbl tbody tr:hover td{ background:#10161d; }
+
+/* Badge za network ostaje */
 .tbl .badge-net{
   display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid #2b3a4f; font-size:12px; color:#cfe3ff; background:#0f1419;
 }
