@@ -237,7 +237,7 @@
 
   function ensureCredit(){
     const n = readAff(); if (n>0) return true;
-    showStatus( 'warn'); return false;
+    showStatus(); return false;
   }
 
   function downloadCsv(rows){
