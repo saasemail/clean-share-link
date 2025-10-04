@@ -237,7 +237,7 @@
 
   function ensureCredit(){
     const n = readAff(); if (n>0) return true;
-    showStatus('No affiliate CSV credits. Click “Buy credits”.', 'warn'); return false;
+    showStatus( 'warn'); return false;
   }
 
   function downloadCsv(rows){
