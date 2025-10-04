@@ -1,0 +1,17 @@
+index,base_url,network,channel_code,subid_param,final_url,notes
+1,https://www.amazon.com/dp/B08N5WRWNW?tag=yourtag-20,amazon,youtube_desc,ascsubtag,https://www.amazon.com/dp/B08N5WRWNW?tag=yourtag-20&ascsubtag=youtube_desc,UTM_REMOVED
+2,https://www.amazon.com/dp/B08N5WRWNW?tag=yourtag-20,amazon,ig_bio,ascsubtag,https://www.amazon.com/dp/B08N5WRWNW?tag=yourtag-20&ascsubtag=ig_bio,UTM_REMOVED
+3,https://www.amazon.com/dp/B08N5WRWNW?tag=yourtag-20,amazon,tiktok_bio,ascsubtag,https://www.amazon.com/dp/B08N5WRWNW?tag=yourtag-20&ascsubtag=tiktok_bio,UTM_REMOVED
+4,https://www.amazon.com/dp/B08N5WRWNW?tag=yourtag-20,amazon,newsletter_aug,ascsubtag,https://www.amazon.com/dp/B08N5WRWNW?tag=yourtag-20&ascsubtag=newsletter_aug,UTM_REMOVED
+5,https://go.awin.link/redirect?url=https%3A%2F%2Fmerchant.example%2Fproduct&campaign=1234,awin,youtube_desc,clickref,https://go.awin.link/redirect?url=https%3A%2F%2Fmerchant.example%2Fproduct&campaign=1234&clickref=youtube_desc,UTM_REMOVED
+6,https://go.awin.link/redirect?url=https%3A%2F%2Fmerchant.example%2Fproduct&campaign=1234,awin,ig_bio,clickref,https://go.awin.link/redirect?url=https%3A%2F%2Fmerchant.example%2Fproduct&campaign=1234&clickref=ig_bio,UTM_REMOVED
+7,https://go.awin.link/redirect?url=https%3A%2F%2Fmerchant.example%2Fproduct&campaign=1234,awin,tiktok_bio,clickref,https://go.awin.link/redirect?url=https%3A%2F%2Fmerchant.example%2Fproduct&campaign=1234&clickref=tiktok_bio,UTM_REMOVED
+8,https://go.awin.link/redirect?url=https%3A%2F%2Fmerchant.example%2Fproduct&campaign=1234,awin,newsletter_aug,clickref,https://go.awin.link/redirect?url=https%3A%2F%2Fmerchant.example%2Fproduct&campaign=1234&clickref=newsletter_aug,UTM_REMOVED
+9,https://rover.ebay.com/rover/1/711-53200-19255-0/1?campid=5338765432&mpre=https%3A%2F%2Fwww.ebay.com%2Fitm%2F1234567,ebay,youtube_desc,customid,https://rover.ebay.com/rover/1/711-53200-19255-0/1?campid=5338765432&mpre=https%3A%2F%2Fwww.ebay.com%2Fitm%2F1234567&customid=youtube_desc,UTM_REMOVED
+10,https://rover.ebay.com/rover/1/711-53200-19255-0/1?campid=5338765432&mpre=https%3A%2F%2Fwww.ebay.com%2Fitm%2F1234567,ebay,ig_bio,customid,https://rover.ebay.com/rover/1/711-53200-19255-0/1?campid=5338765432&mpre=https%3A%2F%2Fwww.ebay.com%2Fitm%2F1234567&customid=ig_bio,UTM_REMOVED
+11,https://rover.ebay.com/rover/1/711-53200-19255-0/1?campid=5338765432&mpre=https%3A%2F%2Fwww.ebay.com%2Fitm%2F1234567,ebay,tiktok_bio,customid,https://rover.ebay.com/rover/1/711-53200-19255-0/1?campid=5338765432&mpre=https%3A%2F%2Fwww.ebay.com%2Fitm%2F1234567&customid=tiktok_bio,UTM_REMOVED
+12,https://rover.ebay.com/rover/1/711-53200-19255-0/1?campid=5338765432&mpre=https%3A%2F%2Fwww.ebay.com%2Fitm%2F1234567,ebay,newsletter_aug,customid,https://rover.ebay.com/rover/1/711-53200-19255-0/1?campid=5338765432&mpre=https%3A%2F%2Fwww.ebay.com%2Fitm%2F1234567&customid=newsletter_aug,UTM_REMOVED
+13,https://merchant.example/deal?sku=ABC&utm_source=social,cj,youtube_desc,sid,https://merchant.example/deal?sku=ABC&sid=youtube_desc,UTM_REMOVED
+14,https://merchant.example/deal?sku=ABC&utm_source=social,cj,ig_bio,sid,https://merchant.example/deal?sku=ABC&sid=ig_bio,UTM_REMOVED
+15,https://merchant.example/deal?sku=ABC&utm_source=social,cj,tiktok_bio,sid,https://merchant.example/deal?sku=ABC&sid=tiktok_bio,UTM_REMOVED
+16,https://merchant.example/deal?sku=ABC&utm_source=social,cj,newsletter_aug,sid,https://merchant.example/deal?sku=ABC&sid=newsletter_aug,UTM_REMOVED
