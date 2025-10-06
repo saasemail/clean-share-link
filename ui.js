@@ -342,38 +342,65 @@
   })();
 
   /* ------------ Tooltip za info dugmad (i) — direktni listeneri ------------ */
+  
+  /* ------------ Tooltip za info dugmad (i) — mobilni + desktop safe ------------ */
   (function setupInfoTooltips(){
     let tipEl = null, currentBtn = null;
-
-    function scrollY(){ return window.scrollY ?? document.documentElement.scrollTop ?? 0; }
-    function scrollX(){ return window.scrollX ?? document.documentElement.scrollLeft ?? 0; }
 
     function ensureTip(){
       if (tipEl) return tipEl;
       tipEl = document.createElement('div');
       tipEl.className = 'tip-pop';
       tipEl.style.display = 'none';
+      tipEl.setAttribute('role', 'tooltip');
       document.body.appendChild(tipEl);
       return tipEl;
     }
-    function showTip(btn){
-      const msg = btn.getAttribute('data-tip') || '';
-      const r = btn.getBoundingClientRect();
-      const pad = 8;
+
+    function getViewport(){
+      const vv = window.visualViewport;
+      if (vv) {
+        return { 
+          top: vv.offsetTop || 0,
+          left: vv.offsetLeft || 0,
+          width: vv.width || window.innerWidth,
+          height: vv.height || window.innerHeight
+        };
+      }
+      return { top: 0, left: 0, width: window.innerWidth, height: window.innerHeight };
+    }
+
+    function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
+
+    function positionTip(btn){
       const t = ensureTip();
-      t.textContent = msg;
+      const r = btn.getBoundingClientRect();
+      const vp = getViewport();
+      const pad = 8;
+
+      // Prepare + measure
       t.style.visibility = 'hidden';
       t.style.display = 'block';
-      // Measure
       const tw = t.offsetWidth, th = t.offsetHeight;
-      let top = scrollY() + r.top - th - pad;
-      let left = scrollX() + r.left + (r.width/2) - (tw/2);
-      if (top < scrollY() + 4) top = scrollY() + r.bottom + pad;
-      if (left < scrollX() + 8) left = scrollX() + 8;
-      if (left + tw > scrollX() + window.innerWidth - 8) left = scrollX() + window.innerWidth - tw - 8;
-      t.style.top = `${top}px`;
-      t.style.left = `${left}px`;
+
+      // Prefer above; if not enough room place below
+      let top = vp.top + r.top - th - pad;
+      if (top < vp.top + 4) top = vp.top + r.bottom + pad;
+
+      // Center horizontally near the button
+      let left = vp.left + r.left + (r.width/2) - (tw/2);
+      left = clamp(left, vp.left + 8, vp.left + vp.width - tw - 8);
+
+      t.style.top = `${Math.round(top)}px};
+      t.style.left = `${Math.round(left)}px`;
       t.style.visibility = 'visible';
+    }
+
+    function showTip(btn){
+      const msg = btn.getAttribute('data-tip') || '';
+      const t = ensureTip();
+      t.textContent = msg;
+      positionTip(btn);
       currentBtn = btn;
     }
     function hideTip(){
@@ -381,33 +408,44 @@
       currentBtn = null;
     }
 
+    function toggleTip(e){
+      e.preventDefault();
+      e.stopPropagation();
+      const btn = e.currentTarget;
+      if (currentBtn === btn){ hideTip(); return; }
+      showTip(btn);
+    }
+
     function bind(btn){
-      // Klik/tap
-      btn.addEventListener('click', (e)=>{
-        e.preventDefault();
-        e.stopPropagation();          // spreči da dokument click odmah sakrije
-        if (currentBtn === btn) { hideTip(); return; }
-        showTip(btn);
-      });
-      // Tastatura: Enter/Space
+      btn.addEventListener('click', toggleTip);
+      btn.addEventListener('touchend', toggleTip, {passive:false});
       btn.addEventListener('keydown', (e)=>{
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault(); e.stopPropagation();
-          if (currentBtn === btn) { hideTip(); return; }
-          showTip(btn);
-        }
+        if (e.key === 'Enter' || e.key === ' ') toggleTip(e);
       });
     }
 
-    // Veži direktno na sva “i” dugmad
     document.querySelectorAll('.i-tip').forEach(bind);
 
-    // Klik bilo gde drugde zatvara
-    document.addEventListener('click', hideTip);
-    // ESC, scroll, resize zatvaraju
+    document.addEventListener('click', (e)=>{
+      if (tipEl && tipEl.style.display === 'block'){
+        if (e.target === tipEl || tipEl.contains(e.target)) return;
+        hideTip();
+      }
+    });
+    document.addEventListener('touchstart', (e)=>{
+      if (tipEl && tipEl.style.display === 'block'){
+        if (e.target === tipEl || tipEl.contains(e.target)) return;
+        hideTip();
+      }
+    }, {passive:true});
     document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') hideTip(); });
-    window.addEventListener('scroll', hideTip, {passive:true});
-    window.addEventListener('resize', hideTip);
-  })();
 
+    const reposition = ()=>{ if (currentBtn && tipEl && tipEl.style.display === 'block') positionTip(currentBtn); };
+    window.addEventListener('scroll', reposition, {passive:true});
+    window.addEventListener('resize', reposition);
+    if (window.visualViewport){
+      window.visualViewport.addEventListener('scroll', reposition);
+      window.visualViewport.addEventListener('resize', reposition);
+    }
+  })();
 })();

@@ -121,6 +121,9 @@ h1{font-size:20px;margin:0}
 .i-tip:focus{ outline:none; box-shadow:0 0 0 3px rgba(106,168,255,.35); }
 /* Tooltip: inicijalno sakriven, JS ga pozicionira i prikazuje */
 .tip-pop{
+  will-change: top, left;
+  touch-action: manipulation;
+
   position:fixed; z-index:9999; max-width:280px;
   background:#0f1419; color:#e6e7ea; border:1px solid #2b3a4f; border-radius:10px;
   padding:10px 12px; box-shadow:0 10px 30px rgba(0,0,0,.45);
