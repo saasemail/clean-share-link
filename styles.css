@@ -37,24 +37,18 @@ h1{font-size:20px;margin:0}
 /* Collapsible */
 .collapse-ctl{display:none}
 .collapse-body{max-height:520px;overflow:hidden;transition:max-height .25s ease}
-/* Centered toggle below the block */
 .collapse-toggle{
   display:flex;align-items:center;justify-content:center;
   width:100%; gap:8px; cursor:pointer; user-select:none;
   color:var(--muted); font-size:13px; margin:6px 0 10px 0;
 }
-/* Chevron: default = UP (open) */
 .collapse-toggle .arrow{
   width:12px;height:12px;display:inline-block;
   border-right:2px solid #7fa7ff;border-bottom:2px solid #7fa7ff;
-  transform:rotate(225deg); /* up */
+  transform:rotate(225deg);
   transform-origin:center; transition:transform .2s ease, opacity .2s ease;
 }
-/* When collapsed → DOWN */
-.collapse-ctl:not(:checked) + .collapse-body + .collapse-toggle .arrow{
-  transform:rotate(45deg); /* down */
-}
-/* Collapse body height when closed */
+.collapse-ctl:not(:checked) + .collapse-body + .collapse-toggle .arrow{ transform:rotate(45deg); }
 .collapse-ctl:not(:checked) + .collapse-body{max-height:0}
 
 /* Callout note */
@@ -84,46 +78,41 @@ h1{font-size:20px;margin:0}
 
 /* Ultra-clean table */
 .tbl-wrap{margin-top:10px; overflow:auto}
+/* ⛔ Onemogući selekciju i long-press copy u preview tabeli */
+.tbl-wrap{
+  -webkit-user-select:none; user-select:none;
+  -webkit-touch-callout:none;
+}
 .tbl{
   width:100%;
   border-collapse:separate; border-spacing:0;
-  table-layout:fixed;               /* stabilna širina kolona */
+  table-layout:fixed;
 }
 .tbl thead th{
   text-align:left; font-weight:600; font-size:13px; color:#cfd6e6;
   background:#0f1419; border:1px solid var(--stroke); border-bottom:none;
-  padding:12px 14px;                /* više dahа u headeru */
-  line-height:1.4;
+  padding:12px 14px; line-height:1.4;
 }
-/* Fiksne širine prvih kolona */
 .tbl thead th:nth-child(1){ width:120px; }
 .tbl thead th:nth-child(2){ width:160px; }
 .tbl thead th:nth-child(3){ width:auto; }
 
 .tbl tbody td{
   border:1px solid var(--stroke); border-top:none;
-  padding:12px 14px;                /* više prostora u ćelijama */
-  line-height:1.55;                 /* bolja čitljivost višerednih URL-ova */
+  padding:12px 14px; line-height:1.55;
   vertical-align:top; background:#0c1015;
-  word-wrap:break-word;             /* fallback */
+  word-wrap:break-word;
 }
 .tbl tbody tr:first-child td{ border-top:1px solid var(--stroke) }
 
-/* URL-ovi: agresivno prelamanje i čitljiviji font/razmak */
 .tbl code{
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-size:13.5px;
-  line-height:1.6;
-  white-space:normal;
-  overflow-wrap:anywhere;
-  word-break:break-word;
+  font-size:13.5px; line-height:1.6;
+  white-space:normal; overflow-wrap:anywhere; word-break:break-word;
 }
-
-/* Zebra + hover */
 .tbl tbody tr:nth-child(odd) td{ background:#0d1218; }
 .tbl tbody tr:hover td{ background:#10161d; }
 
-/* Badge za network */
 .tbl .badge-net{
   display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid #2b3a4f; font-size:12px; color:#cfe3ff; background:#0f1419;
 }

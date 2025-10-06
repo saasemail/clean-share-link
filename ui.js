@@ -176,6 +176,8 @@
   }
 
   // Render ultra-clean table
+  const smtTable = document.getElementById('smtTable'); // for copy interception
+
   function renderSummary(rows, urlCount, chCount){
     smtSummary.textContent = `Rows: ${rows.length} · URLs: ${urlCount} · Channels: ${chCount}`;
   }
@@ -317,4 +319,26 @@
     if (s.length>24) s=s.slice(0,24);
     return s;
   }
+
+  /* ------------ Anti-copy u preview tabeli (samo 1+2) ------------ */
+  (function setupNoCopy(){
+    const tbl = document.getElementById('smtTable');
+    if (!tbl) return;
+
+    document.addEventListener('copy', (e)=>{
+      try{
+        const sel = window.getSelection && window.getSelection();
+        if (!sel || sel.isCollapsed) return;
+        const node = sel.anchorNode;
+        if (node && tbl.contains(node)){
+          e.preventDefault();
+          const msg = 'Preview is masked. Use Export CSV to get full results.';
+          if (e.clipboardData) e.clipboardData.setData('text/plain', msg);
+          else if (window.clipboardData) window.clipboardData.setData('Text', msg);
+          showStatus('Copy disabled in preview. Export CSV for full results.', 'warn');
+        }
+      }catch{ /* no-op */ }
+    }, true);
+  })();
+
 })();
