@@ -1,6 +1,6 @@
 // SubID Matrix — ultra-clean table preview (one full row, others masked). Credits + FastSpring intact.
 
-// ---- TOOLTIP INIT (stabilno, bez "instant close") ----
+// ---- TOOLTIP INIT — MOBILE SAFE (pointer/touch + label guard) ----
 (function setupInfoTooltips(){
   try{
     let tipEl = null, currentBtn = null;
@@ -8,6 +8,7 @@
 
     const sY = ()=> window.scrollY ?? document.documentElement.scrollTop ?? 0;
     const sX = ()=> window.scrollX ?? document.documentElement.scrollLeft ?? 0;
+    const now = ()=> Date.now();
 
     function ensureTip(){
       if (tipEl) return tipEl;
@@ -47,12 +48,12 @@
       t.style.left = `${left}px`;
       t.style.visibility = 'visible';
       currentBtn = btn;
-      openedAt = Date.now();
+      openedAt = now();
     }
 
     function hideTip(force=false){
       // kratki guard: ne zatvaraj odmah u istom "tick"-u posle otvaranja
-      if (!force && Date.now() - openedAt < 100) return;
+      if (!force && now() - openedAt < 100) return;
       if (tipEl) tipEl.style.display = 'none';
       currentBtn = null;
     }
@@ -65,31 +66,49 @@
     }
 
     function bind(btn){
-      // eksplicitno dugme — već jeste type="button" u HTML-u
+      // Desktop
       btn.addEventListener('click', (e)=> toggleTip(e, btn));
       btn.addEventListener('keydown', (e)=>{
         if (e.key === 'Enter' || e.key === ' ') toggleTip(e, btn);
       });
+      // Mobile / pen (pointer) — dodatno otvaranje na tap
+      btn.addEventListener('pointerup', (e)=>{ if (e.pointerType !== 'mouse') toggleTip(e, btn); });
+      // Fallback za stariji iOS Safari
+      btn.addEventListener('touchend', (e)=> toggleTip(e, btn), {passive:false});
     }
 
-    // zakači kad DOM postoji (script je ionako u dnu, ali budimo sigurni)
     const ready = () => {
-      document.querySelectorAll('.i-tip').forEach(bind);
-
-      // global close (sa guardom)
-      document.addEventListener('click', (ev)=>{
-        // ako je klik unutar tooltipa — ignorisi
-        if (tipEl && tipEl.style.display !== 'none' && tipEl.contains(ev.target)) return;
-        // ako je klik baš na "i" dugme — ignorisano jer stopPropagation
-        hideTip(false);
+      // 1) Spreči da tap na .i-tip unutar <label class="toggle"> toggluje checkbox i "pojede" event
+      document.querySelectorAll('label.toggle').forEach(lab=>{
+        const swallow = (e)=>{
+          const t = e.target;
+          if (!t) return;
+          const hit = t.classList?.contains('i-tip') || (t.closest && t.closest('.i-tip'));
+          if (hit){ e.preventDefault(); e.stopPropagation(); }
+        };
+        lab.addEventListener('click', swallow, true);
+        lab.addEventListener('pointerup', (e)=>{ if (e.pointerType !== 'mouse') swallow(e); }, true);
+        lab.addEventListener('touchend', swallow, {capture:true, passive:false});
       });
 
-      // Escape zatvara
+      // 2) Veži “i” tipke
+      document.querySelectorAll('.i-tip').forEach(bind);
+
+      // 3) Global close sa guardom
+      const onDoc = (ev)=>{
+        if (tipEl && tipEl.style.display !== 'none' && tipEl.contains(ev.target)) return;
+        hideTip(false);
+      };
+      document.addEventListener('click', onDoc, true);
+      document.addEventListener('pointerdown', onDoc, true);
+      document.addEventListener('touchstart', onDoc, {capture:true, passive:true});
+
+      // Escape
       document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') hideTip(true); });
 
-      // Scroll/resize: “debounce” kratko
-      let t1=null;
-      const deb = ()=>{ if (t1) cancelAnimationFrame(t1); t1 = requestAnimationFrame(()=> hideTip(true)); };
+      // Scroll/resize debounce
+      let raf=null;
+      const deb = ()=>{ if (raf) cancelAnimationFrame(raf); raf = requestAnimationFrame(()=> hideTip(true)); };
       window.addEventListener('scroll', deb, {passive:true});
       window.addEventListener('resize', deb);
     };
@@ -263,10 +282,10 @@
     if (path.length <= 18) return path;
     const parts = path.split('/');
     const last = parts.pop() || '';
-    const shortLast = last.length>10 ? (last.slice(0,6)+'…') : last;
+    theShort = last.length>10 ? (last.slice(0,6)+'…') : last;
     const base = parts.join('/') || '';
     const shortBase = base.length>8 ? (base.slice(0,8)+'…') : base;
-    return (shortBase ? '/'+shortBase : '') + (shortLast ? '/'+shortLast : '/');
+    return (shortBase ? '/'+shortBase : '') + (theShort ? '/'+theShort : '/');
   }
   function maskDisplay(u, paramKey, channelCode){
     try{
