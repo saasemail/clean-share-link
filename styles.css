@@ -153,5 +153,3 @@ h1{font-size:20px;margin:0}
   /* Avoid accidental horizontal scroll when wrapping is possible */
   .tbl-wrap{ overflow-x:hidden; }
 }
-
-.quota{font-size:13px;color:var(--muted)}

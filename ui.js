@@ -15,41 +15,14 @@
   const affBadge     = el('affCredits');
 
   const smtSummary   = el('smtSummary');
-  const smtHint = el('smtHint');
-  const smtTbody = el('smtTbody');
-
-  // Pay-per-run session (single export with cap 10/50/100)
-  const RUN_SESSION_KEY = 'smt_run_session_v1'; // {cap:number, used:boolean, createdAt:number}
-  const SKU_CAP = { smt10:10, smt50:50, smt100:100 };
-  const runBadge = document.getElementById('runBadge');
-  const buyStarter = document.getElementById('buyStarter');
-  const buyPro = document.getElementById('buyPro');
-  const buyAgency = document.getElementById('buyAgency');
-
-  function readSession(){
-    try{ const o = JSON.parse(localStorage.getItem(RUN_SESSION_KEY)||'null'); return (o&&typeof o.cap==='number')?o:null; }catch{ return null; }
-  }
-  function writeSession(o){
-    try{ localStorage.setItem(RUN_SESSION_KEY, JSON.stringify(o||null)); }catch{}
-    updateRunBadge();
-  }
-  function clearSession(){ try{ localStorage.removeItem(RUN_SESSION_KEY); }catch{} updateRunBadge(); }
-  function updateRunBadge(){
-    const s = readSession();
-    if (!runBadge) return;
-    if (!s) runBadge.textContent = 'Session: none';
-    else if (s.used) runBadge.textContent = `Session: used (cap ${s.cap})`;
-    else runBadge.textContent = `Session: active (cap ${s.cap})`;
-  }
-  updateRunBadge();
   const smtHint      = el('smtHint');
   const smtTbody     = el('smtTbody');
 
   // Credits
-  const AFF_CREDITS_KEY = 'csl_aff_credits'; // legacy (unused)
-  function readAff(){ return 0; }
-function writeAff(n){}
-// legacy no-op
+  const AFF_CREDITS_KEY = 'csl_aff_credits';
+  function readAff(){ try{ return Math.max(0, Number(localStorage.getItem(AFF_CREDITS_KEY)||0)); }catch{ return 0; } }
+  function writeAff(n){ try{ localStorage.setItem(AFF_CREDITS_KEY, String(Math.max(0, n|0))); }catch{}; if(affBadge) affBadge.textContent='AFF: '+readAff(); }
+  writeAff(readAff()); // refresh UI
 
   // Helpers
   function showStatus(t, kind){ status.textContent=t||''; status.className='status'+(kind?(' '+kind):''); }
@@ -264,18 +237,10 @@ function writeAff(n){}
     showStatus('Analyze ready.', 'ok');
   }
 
-  function ensureRunSession(urlCount){
-      const s = readSession();
-      if (!s || s.used){
-        showStatus('Purchase a package to export: Starter (10), Pro (50), Agency (100).', 'warn');
-        return false;
-      }
-      if (typeof urlCount === 'number' && urlCount > s.cap){
-        showStatus(`Your package covers up to ${s.cap} URLs per run. You entered ${urlCount}.`, 'err');
-        return false;
-      }
-      return true;
-    }
+  function ensureCredit(){
+    const n = readAff(); if (n>0) return true;
+    showStatus(); return false;
+  }
 
   function downloadCsv(rows){
     const header = ["index","base_url","network","channel_code","subid_param","final_url","notes"];
@@ -295,18 +260,192 @@ function writeAff(n){}
   }
 
   function exportCsv(){
-  const urls = getUrlLines(), ch = getLines(channelsIn);
-  if (!urls.length) { showStatus('Add URLs.', 'err'); return; }
-  if (!ch.length)   { showStatus('Add channels.', 'err'); return; }
-  if (!ensureRunSession(urls.length)) return;
+    const urls = getUrlLines(), ch = getLines(channelsIn);
+    if (!urls.length) { showStatus('Add URLs.', 'err'); return; }
+    if (!ch.length)   { showStatus('Add channels.', 'err'); return; }
+    if (!ensureCredit()) return;
+    const rows = buildMatrix(urls, ch, !!keepUtms?.checked);
+    if (!rows.length){ showStatus('Nothing to export.', 'err'); return; }
+    downloadCsv(rows);
+    writeAff(readAff()-1);
+    showStatus(`SubID CSV exported • –1 credit • ${rows.length} rows`, 'ok');
+  }
 
-  const rows = buildMatrix(urls, ch, !!keepUtms?.checked);
-  if (!rows.length){ showStatus('Nothing to export.', 'err'); return; }
+  if (analyzeBtn) analyzeBtn.addEventListener('click', analyze);
+  if (exportBtn)  exportBtn.addEventListener('click', exportCsv);
 
-  downloadCsv(rows);
+  // FastSpring glue (AFF1/AFF5/AFF20)
+  async function waitForFS(ms=4000){
+    const t0=Date.now();
+    while(!window.fastspring || !window.fastspring.builder){
+      if(Date.now()-t0>ms) throw new Error('FastSpring not loaded');
+      await new Promise(r=>setTimeout(r,25));
+    }
+    return window.fastspring;
+  }
+  function registerFSEvents(fs){
+    if (!fs || !fs.builder || !fs.builder.on) return;
+    const handler = (evt)=>{
+      try{
+        const items = (evt.items || evt.data?.items || evt.events?.[0]?.data?.items) || [];
+        for (const it of items){
+          const sku = String(it.path || it.product || it.sku || it.display || it.id || '').toLowerCase();
+          if (/^aff1$/.test(sku))  writeAff(readAff()+1);
+          if (/^aff5$/.test(sku))  writeAff(readAff()+5);
+          if (/^aff20$/.test(sku)) writeAff(readAff()+20);
+        }
+      }catch{}
+    };
+    ['purchased','completed','complete','order.completed','checkout.completed'].forEach(n=>{ try{ fs.builder.on(n, handler); }catch{} });
+  }
+  if (buyAffBtn){
+    buyAffBtn.addEventListener('click', async ()=>{
+      try{
+        const fs = await waitForFS();
+        registerFSEvents(fs);
+        try{ fs.builder.reset(); }catch{}
+        fs.builder.add('aff5');
+        fs.builder.checkout();
+      }catch(e){ console.warn(e); showStatus('Checkout is loading… try again shortly.', 'warn'); }
+    });
+  }
+  (async()=>{ try{ const fs=await waitForFS(6000); registerFSEvents(fs);}catch{} })();
 
-  const s = readSession();
-  if (s) { s.used = true; writeSession(s); }
-  showStatus(`SubID CSV exported • session consumed • ${rows.length} rows`, 'ok');
-}
-)();
+  // Channel normalize
+  function normalizeChannel(label){
+    let s=(label||'').toLowerCase().trim();
+    s = s.normalize ? s.normalize('NFD').replace(/[\u0300-\u036f]/g,'') : s;
+    s = s.replace(/[^a-z0-9\-_]+/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
+    if (s.length>24) s=s.slice(0,24);
+    return s;
+  }
+
+  /* ------------ Anti-copy u preview tabeli (samo 1+2) ------------ */
+  (function setupNoCopy(){
+    const tbl = document.getElementById('smtTable');
+    if (!tbl) return;
+
+    document.addEventListener('copy', (e)=>{
+      try{
+        const sel = window.getSelection && window.getSelection();
+        if (!sel || sel.isCollapsed) return;
+        const node = sel.anchorNode;
+        if (node && tbl.contains(node)){
+          e.preventDefault();
+          const msg = 'Preview is masked. Use Export CSV to get full results.';
+          if (e.clipboardData) e.clipboardData.setData('text/plain', msg);
+          else if (window.clipboardData) window.clipboardData.setData('Text', msg);
+          showStatus('Copy disabled in preview. Export CSV for full results.', 'warn');
+        }
+      }catch{ /* no-op */ }
+    }, true);
+  })();
+
+  /* ------------ Tooltip za info dugmad (i) — direktni listeneri ------------ */
+  
+  /* ------------ Tooltip za info dugmad (i) — mobilni + desktop safe (fixed) ------------ */
+  (function setupInfoTooltips(){
+    let tipEl = null, currentBtn = null;
+
+    function ensureTip(){
+      if (tipEl) return tipEl;
+      tipEl = document.createElement('div');
+      tipEl.className = 'tip-pop';
+      tipEl.style.display = 'none';
+      tipEl.setAttribute('role', 'tooltip');
+      document.body.appendChild(tipEl);
+      return tipEl;
+    }
+
+    function getViewport(){
+      const vv = window.visualViewport;
+      if (vv) {
+        return { 
+          top: vv.offsetTop || 0,
+          left: vv.offsetLeft || 0,
+          width: vv.width || window.innerWidth,
+          height: vv.height || window.innerHeight
+        };
+      }
+      return { top: 0, left: 0, width: window.innerWidth, height: window.innerHeight };
+    }
+
+    function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
+
+    function positionTip(btn){
+      const t = ensureTip();
+      const r = btn.getBoundingClientRect();
+      const vp = getViewport();
+      const pad = 8;
+
+      // Prepare + measure
+      t.style.visibility = 'hidden';
+      t.style.display = 'block';
+      const tw = t.offsetWidth, th = t.offsetHeight;
+
+      // Prefer above; if not enough room place below
+      let top = vp.top + r.top - th - pad;
+      if (top < vp.top + 4) top = vp.top + r.bottom + pad;
+
+      // Center horizontally near the button
+      let left = vp.left + r.left + (r.width/2) - (tw/2);
+      left = clamp(left, vp.left + 8, vp.left + vp.width - tw - 8);
+
+      t.style.top = `${Math.round(top)}px`;
+      t.style.left = `${Math.round(left)}px`;
+      t.style.visibility = 'visible';
+    }
+
+    function showTip(btn){
+      const msg = btn.getAttribute('data-tip') || '';
+      const t = ensureTip();
+      t.textContent = msg;
+      positionTip(btn);
+      currentBtn = btn;
+    }
+    function hideTip(){
+      if (tipEl){ tipEl.style.display = 'none'; }
+      currentBtn = null;
+    }
+
+    function toggleTip(e){
+      e.preventDefault();
+      e.stopPropagation();
+      const btn = e.currentTarget;
+      if (currentBtn === btn){ hideTip(); return; }
+      showTip(btn);
+    }
+
+    function bind(btn){
+      btn.addEventListener('click', toggleTip);
+      btn.addEventListener('touchend', toggleTip, {passive:false});
+      btn.addEventListener('keydown', (e)=>{
+        if (e.key === 'Enter' || e.key === ' ') toggleTip(e);
+      });
+    }
+
+    document.querySelectorAll('.i-tip').forEach(bind);
+
+    document.addEventListener('click', (e)=>{
+      if (tipEl && tipEl.style.display === 'block'){
+        if (e.target === tipEl || tipEl.contains(e.target)) return;
+        hideTip();
+      }
+    });
+    document.addEventListener('touchstart', (e)=>{
+      if (tipEl && tipEl.style.display === 'block'){
+        if (e.target === tipEl || tipEl.contains(e.target)) return;
+        hideTip();
+      }
+    }, {passive:true});
+    document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') hideTip(); });
+
+    const reposition = ()=>{ if (currentBtn && tipEl && tipEl.style.display === 'block') positionTip(currentBtn); };
+    window.addEventListener('scroll', reposition, {passive:true});
+    window.addEventListener('resize', reposition);
+    if (window.visualViewport){
+      window.visualViewport.addEventListener('scroll', reposition);
+      window.visualViewport.addEventListener('resize', reposition);
+    }
+  })();
+})();
