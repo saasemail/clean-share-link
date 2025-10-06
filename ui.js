@@ -343,7 +343,7 @@
 
   /* ------------ Tooltip za info dugmad (i) — direktni listeneri ------------ */
   
-  /* ------------ Tooltip za info dugmad (i) — mobilni + desktop safe ------------ */
+  /* ------------ Tooltip za info dugmad (i) — mobilni + desktop safe (fixed) ------------ */
   (function setupInfoTooltips(){
     let tipEl = null, currentBtn = null;
 
@@ -391,7 +391,7 @@
       let left = vp.left + r.left + (r.width/2) - (tw/2);
       left = clamp(left, vp.left + 8, vp.left + vp.width - tw - 8);
 
-      t.style.top = `${Math.round(top)}px};
+      t.style.top = `${Math.round(top)}px`;
       t.style.left = `${Math.round(left)}px`;
       t.style.visibility = 'visible';
     }
