@@ -1,10 +1,13 @@
 // SubID Matrix — ultra-clean table preview (one full row, others masked). Credits + FastSpring intact.
 
-// ---- TOOLTIP INIT — MOBILE SAFE (pointer/touch + label guard) ----
+/* =========================
+   TOOLTIP INIT (mobile/desktop safe)
+   ========================= */
 (function setupInfoTooltips(){
   try{
     let tipEl = null, currentBtn = null;
-    let openedAt = 0; // guard protiv trenutnog "document click" posle otvaranja
+    let openedAt = 0; // guard da ne zatvaramo odmah posle otvaranja
+    let lastToggleTs = 0; // spreči dupli toggle (touch -> click)
 
     const sY = ()=> window.scrollY ?? document.documentElement.scrollTop ?? 0;
     const sX = ()=> window.scrollX ?? document.documentElement.scrollLeft ?? 0;
@@ -52,8 +55,7 @@
     }
 
     function hideTip(force=false){
-      // kratki guard: ne zatvaraj odmah u istom "tick"-u posle otvaranja
-      if (!force && now() - openedAt < 100) return;
+      if (!force && now() - openedAt < 100) return; // guard protiv instant closing-a
       if (tipEl) tipEl.style.display = 'none';
       currentBtn = null;
     }
@@ -61,24 +63,33 @@
     function toggleTip(e, btn){
       e.preventDefault();
       e.stopPropagation();
+      const t = now();
+      // Ignoriši "dupli" događaj (npr. pointer/touch pa onda click iz istog tap-a)
+      if (t - lastToggleTs < 120) return;
+      lastToggleTs = t;
+
       if (currentBtn === btn) { hideTip(true); return; }
       showTip(btn);
     }
 
     function bind(btn){
-      // Desktop
+      // Desktop (click + tastatura)
       btn.addEventListener('click', (e)=> toggleTip(e, btn));
       btn.addEventListener('keydown', (e)=>{
         if (e.key === 'Enter' || e.key === ' ') toggleTip(e, btn);
       });
-      // Mobile / pen (pointer) — dodatno otvaranje na tap
-      btn.addEventListener('pointerup', (e)=>{ if (e.pointerType !== 'mouse') toggleTip(e, btn); });
-      // Fallback za stariji iOS Safari
+
+      // Mobile (pointerdown radi bolje na mobilnim — nema kašnjenja)
+      btn.addEventListener('pointerdown', (e)=>{
+        if (e.pointerType !== 'mouse') toggleTip(e, btn);
+      });
+
+      // Fallback za stariji iOS Safari (touchend)
       btn.addEventListener('touchend', (e)=> toggleTip(e, btn), {passive:false});
     }
 
     const ready = () => {
-      // 1) Spreči da tap na .i-tip unutar <label class="toggle"> toggluje checkbox i "pojede" event
+      // 1) Ako je .i-tip unutar <label class="toggle">, spreči toggle checkbox-a i "gutanje" događaja
       document.querySelectorAll('label.toggle').forEach(lab=>{
         const swallow = (e)=>{
           const t = e.target;
@@ -87,26 +98,27 @@
           if (hit){ e.preventDefault(); e.stopPropagation(); }
         };
         lab.addEventListener('click', swallow, true);
-        lab.addEventListener('pointerup', (e)=>{ if (e.pointerType !== 'mouse') swallow(e); }, true);
+        lab.addEventListener('pointerdown', (e)=>{ if (e.pointerType !== 'mouse') swallow(e); }, true);
         lab.addEventListener('touchend', swallow, {capture:true, passive:false});
       });
 
-      // 2) Veži “i” tipke
+      // 2) Veži sva “i” dugmad
       document.querySelectorAll('.i-tip').forEach(bind);
 
-      // 3) Global close sa guardom
-      const onDoc = (ev)=>{
+      // 3) Global close + guard
+      const onDocDown = (ev)=>{
+        // Ako klik/tap unutar samog tooltipa — ne zatvaraj
         if (tipEl && tipEl.style.display !== 'none' && tipEl.contains(ev.target)) return;
         hideTip(false);
       };
-      document.addEventListener('click', onDoc, true);
-      document.addEventListener('pointerdown', onDoc, true);
-      document.addEventListener('touchstart', onDoc, {capture:true, passive:true});
+      document.addEventListener('pointerdown', onDocDown, true);
+      document.addEventListener('click', onDocDown, true);
+      document.addEventListener('touchstart', onDocDown, {capture:true, passive:true});
 
-      // Escape
+      // Escape zatvara
       document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') hideTip(true); });
 
-      // Scroll/resize debounce
+      // Scroll/resize — “debounce” preko rAF
       let raf=null;
       const deb = ()=>{ if (raf) cancelAnimationFrame(raf); raf = requestAnimationFrame(()=> hideTip(true)); };
       window.addEventListener('scroll', deb, {passive:true});
@@ -123,7 +135,9 @@
   }
 })();
 
-// ---- OSTATAK APLIKACIJE (ne diramo logiku) ----
+/* =========================
+   OSTATak APLIKACIJE (logika netaknuta)
+   ========================= */
 (function(){
   const el = (id) => document.getElementById(id);
 
@@ -282,10 +296,10 @@
     if (path.length <= 18) return path;
     const parts = path.split('/');
     const last = parts.pop() || '';
-    theShort = last.length>10 ? (last.slice(0,6)+'…') : last;
+    const shortLast = last.length>10 ? (last.slice(0,6)+'…') : last;
     const base = parts.join('/') || '';
     const shortBase = base.length>8 ? (base.slice(0,8)+'…') : base;
-    return (shortBase ? '/'+shortBase : '') + (theShort ? '/'+theShort : '/');
+    return (shortBase ? '/'+shortBase : '') + (shortLast ? '/'+shortLast : '/');
   }
   function maskDisplay(u, paramKey, channelCode){
     try{
