@@ -117,12 +117,11 @@ h1{font-size:20px;margin:0}
   font-size:12px; line-height:16px; text-align:center; cursor:pointer;
 }
 .i-tip:hover{ border-color:#3a4e6a; }
-/* Fokus obrub (tastatura / mobilni) */
 .i-tip:focus{ outline:none; box-shadow:0 0 0 3px rgba(106,168,255,.35); }
 
 /* Tooltip — stabilno pored dugmeta i mobilno-friendly */
 .tip-pop{
-  position:fixed; z-index:9999;
+  position:fixed; z-index:2147483000; /* izuzetno visok da bude iznad svega */
   max-width: min(280px, calc(100vw - 16px));
   background:#0f1419; color:#e6e7ea; border:1px solid #2b3a4f; border-radius:10px;
   padding:10px 12px; box-shadow:0 10px 30px rgba(0,0,0,.45);
