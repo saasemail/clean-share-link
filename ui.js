@@ -1,9 +1,10 @@
 // SubID Matrix — ultra-clean table preview (one full row, others masked). Credits + FastSpring intact.
 
-// 1) TOOLTIP INIT — potpuno izolovan, radi čak i ako kasnije nešto pukne
-(function setupInfoTooltipsIsolated(){
+// ---- TOOLTIP INIT (stabilno, bez "instant close") ----
+(function setupInfoTooltips(){
   try{
     let tipEl = null, currentBtn = null;
+    let openedAt = 0; // guard protiv trenutnog "document click" posle otvaranja
 
     const sY = ()=> window.scrollY ?? document.documentElement.scrollTop ?? 0;
     const sX = ()=> window.scrollX ?? document.documentElement.scrollLeft ?? 0;
@@ -13,6 +14,7 @@
       tipEl = document.createElement('div');
       tipEl.className = 'tip-pop';
       tipEl.style.display = 'none';
+      tipEl.setAttribute('role','tooltip');
       document.body.appendChild(tipEl);
       return tipEl;
     }
@@ -38,7 +40,6 @@
       if (top + th > sY() + window.innerHeight - 4){
         top = sY() + r.top - th - pad;
       }
-
       // uklopi u viewport
       left = clamp(left, sX() + 8, sX() + window.innerWidth - tw - 8);
 
@@ -46,49 +47,64 @@
       t.style.left = `${left}px`;
       t.style.visibility = 'visible';
       currentBtn = btn;
+      openedAt = Date.now();
     }
-    function hideTip(){
-      if (tipEl){ tipEl.style.display = 'none'; }
+
+    function hideTip(force=false){
+      // kratki guard: ne zatvaraj odmah u istom "tick"-u posle otvaranja
+      if (!force && Date.now() - openedAt < 100) return;
+      if (tipEl) tipEl.style.display = 'none';
       currentBtn = null;
     }
 
+    function toggleTip(e, btn){
+      e.preventDefault();
+      e.stopPropagation();
+      if (currentBtn === btn) { hideTip(true); return; }
+      showTip(btn);
+    }
+
     function bind(btn){
-      // eksplicitno ukini behavior <label> roditelja
-      btn.addEventListener('click', (e)=>{
-        e.preventDefault();
-        e.stopPropagation();
-        if (currentBtn === btn) { hideTip(); return; }
-        showTip(btn);
-      });
+      // eksplicitno dugme — već jeste type="button" u HTML-u
+      btn.addEventListener('click', (e)=> toggleTip(e, btn));
       btn.addEventListener('keydown', (e)=>{
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault(); e.stopPropagation();
-          if (currentBtn === btn) { hideTip(); return; }
-          showTip(btn);
-        }
+        if (e.key === 'Enter' || e.key === ' ') toggleTip(e, btn);
       });
     }
 
-    // zakači POSLE što je DOM gotov (za slučaj da je script u <head>)
+    // zakači kad DOM postoji (script je ionako u dnu, ali budimo sigurni)
     const ready = () => {
       document.querySelectorAll('.i-tip').forEach(bind);
-      document.addEventListener('click', hideTip);
-      document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') hideTip(); });
-      window.addEventListener('scroll', hideTip, {passive:true});
-      window.addEventListener('resize', hideTip);
+
+      // global close (sa guardom)
+      document.addEventListener('click', (ev)=>{
+        // ako je klik unutar tooltipa — ignorisi
+        if (tipEl && tipEl.style.display !== 'none' && tipEl.contains(ev.target)) return;
+        // ako je klik baš na "i" dugme — ignorisano jer stopPropagation
+        hideTip(false);
+      });
+
+      // Escape zatvara
+      document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') hideTip(true); });
+
+      // Scroll/resize: “debounce” kratko
+      let t1=null;
+      const deb = ()=>{ if (t1) cancelAnimationFrame(t1); t1 = requestAnimationFrame(()=> hideTip(true)); };
+      window.addEventListener('scroll', deb, {passive:true});
+      window.addEventListener('resize', deb);
     };
+
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', ready, {once:true});
     } else {
       ready();
     }
   }catch(e){
-    // ništa — tooltip je “nice to have”
     console.warn('Tooltip init error:', e);
   }
 })();
 
-// 2) OSTATak APLIKACIJE (ne diramo sem malih defenzivnih try/catch)
+// ---- OSTATAK APLIKACIJE (ne diramo logiku) ----
 (function(){
   const el = (id) => document.getElementById(id);
 
@@ -132,7 +148,7 @@
       .split(/\r?\n/).map(stripUrlComment).map(s=>s.trim()).filter(Boolean);
   }
 
-  // Networks
+  // Networks (isto)
   const NETWORKS = [
     { id:"amazon", host:/(^|\.)amazon\./i, subParam:"ascsubtag", keep:["tag","ascsubtag"],
       remove:["qid","sr","ref","smid","spIA","keywords","_encoding"], deeplinkKeys:[], required:["tag"], label:"Amazon" },
@@ -162,7 +178,7 @@
   }
   function netRecord(u){ const id=detectNetwork(u); return NETWORKS.find(n=>n.id===id)||NETWORKS[NETWORKS.length-1]; }
 
-  // Cleaning
+  // Cleaning helpers
   function canonicalizeAmazon(url){
     const m1 = url.pathname.match(/\/dp\/([A-Z0-9]{10})/i);
     const m2 = url.pathname.match(/\/gp\/product\/([A-Z0-9]{10})/i);
@@ -263,7 +279,7 @@
     }
   }
 
-  // Render ultra-clean table
+  // Render table
   const smtTable = document.getElementById('smtTable'); // for copy interception
 
   function renderSummary(rows, urlCount, chCount){
@@ -410,7 +426,7 @@
     return s;
   }
 
-  /* ------------ Anti-copy u preview tabeli (samo 1+2) ------------ */
+  // Anti-copy u preview tabeli
   (function setupNoCopy(){
     try{
       const tbl = document.getElementById('smtTable');
