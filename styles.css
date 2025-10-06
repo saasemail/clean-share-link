@@ -133,3 +133,23 @@ h1{font-size:20px;margin:0}
 
 /* Footer */
 .foot{margin-top:16px;text-align:center;font-size:13px}
+
+
+/* --- Mobile readability for long URLs in Result column --- */
+@media (max-width: 720px){
+  .tbl{ table-layout:auto; }
+  .tbl thead th:nth-child(1){ width:84px; }
+  .tbl thead th:nth-child(2){ width:110px; }
+  .tbl tbody td{ padding:10px 10px; }
+  /* Ensure long URLs wrap cleanly on small screens */
+  .tbl tbody td:nth-child(3),
+  .tbl tbody td:nth-child(3) code{
+    display:block;
+    white-space:normal;
+    overflow-wrap:anywhere;
+    word-break:break-word;
+    hyphens:auto;
+  }
+  /* Avoid accidental horizontal scroll when wrapping is possible */
+  .tbl-wrap{ overflow-x:hidden; }
+}
