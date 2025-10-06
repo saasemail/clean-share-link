@@ -1,143 +1,5 @@
 // SubID Matrix — ultra-clean table preview (one full row, others masked). Credits + FastSpring intact.
 
-/* =========================
-   TOOLTIP INIT (mobile/desktop safe)
-   ========================= */
-(function setupInfoTooltips(){
-  try{
-    let tipEl = null, currentBtn = null;
-    let openedAt = 0; // guard da ne zatvaramo odmah posle otvaranja
-    let lastToggleTs = 0; // spreči dupli toggle (touch -> click)
-
-    const sY = ()=> window.scrollY ?? document.documentElement.scrollTop ?? 0;
-    const sX = ()=> window.scrollX ?? document.documentElement.scrollLeft ?? 0;
-    const now = ()=> Date.now();
-
-    function ensureTip(){
-      if (tipEl) return tipEl;
-      tipEl = document.createElement('div');
-      tipEl.className = 'tip-pop';
-      tipEl.style.display = 'none';
-      tipEl.setAttribute('role','tooltip');
-      document.body.appendChild(tipEl);
-      return tipEl;
-    }
-    function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
-
-    function showTip(btn){
-      const msg = btn.getAttribute('data-tip') || '';
-      const r = btn.getBoundingClientRect();
-      const pad = 8;
-      const t = ensureTip();
-      t.textContent = msg;
-      t.style.visibility = 'hidden';
-      t.style.display = 'block';
-
-      const tw = t.offsetWidth;
-      const th = t.offsetHeight;
-
-      // primarno: ispod, levo poravnato uz dugme
-      let top  = sY() + r.bottom + pad;
-      let left = sX() + r.left;
-
-      // ako nema mesta ispod -> iznad
-      if (top + th > sY() + window.innerHeight - 4){
-        top = sY() + r.top - th - pad;
-      }
-      // uklopi u viewport
-      left = clamp(left, sX() + 8, sX() + window.innerWidth - tw - 8);
-
-      t.style.top  = `${top}px`;
-      t.style.left = `${left}px`;
-      t.style.visibility = 'visible';
-      currentBtn = btn;
-      openedAt = now();
-    }
-
-    function hideTip(force=false){
-      if (!force && now() - openedAt < 100) return; // guard protiv instant closing-a
-      if (tipEl) tipEl.style.display = 'none';
-      currentBtn = null;
-    }
-
-    function toggleTip(e, btn){
-      e.preventDefault();
-      e.stopPropagation();
-      const t = now();
-      // Ignoriši "dupli" događaj (npr. pointer/touch pa onda click iz istog tap-a)
-      if (t - lastToggleTs < 120) return;
-      lastToggleTs = t;
-
-      if (currentBtn === btn) { hideTip(true); return; }
-      showTip(btn);
-    }
-
-    function bind(btn){
-      // Desktop (click + tastatura)
-      btn.addEventListener('click', (e)=> toggleTip(e, btn));
-      btn.addEventListener('keydown', (e)=>{
-        if (e.key === 'Enter' || e.key === ' ') toggleTip(e, btn);
-      });
-
-      // Mobile (pointerdown radi bolje na mobilnim — nema kašnjenja)
-      btn.addEventListener('pointerdown', (e)=>{
-        if (e.pointerType !== 'mouse') toggleTip(e, btn);
-      });
-
-      // Fallback za stariji iOS Safari (touchend)
-      btn.addEventListener('touchend', (e)=> toggleTip(e, btn), {passive:false});
-    }
-
-    const ready = () => {
-      // 1) Ako je .i-tip unutar <label class="toggle">, spreči toggle checkbox-a i "gutanje" događaja
-      document.querySelectorAll('label.toggle').forEach(lab=>{
-        const swallow = (e)=>{
-          const t = e.target;
-          if (!t) return;
-          const hit = t.classList?.contains('i-tip') || (t.closest && t.closest('.i-tip'));
-          if (hit){ e.preventDefault(); e.stopPropagation(); }
-        };
-        lab.addEventListener('click', swallow, true);
-        lab.addEventListener('pointerdown', (e)=>{ if (e.pointerType !== 'mouse') swallow(e); }, true);
-        lab.addEventListener('touchend', swallow, {capture:true, passive:false});
-      });
-
-      // 2) Veži sva “i” dugmad
-      document.querySelectorAll('.i-tip').forEach(bind);
-
-      // 3) Global close + guard
-      const onDocDown = (ev)=>{
-        // Ako klik/tap unutar samog tooltipa — ne zatvaraj
-        if (tipEl && tipEl.style.display !== 'none' && tipEl.contains(ev.target)) return;
-        hideTip(false);
-      };
-      document.addEventListener('pointerdown', onDocDown, true);
-      document.addEventListener('click', onDocDown, true);
-      document.addEventListener('touchstart', onDocDown, {capture:true, passive:true});
-
-      // Escape zatvara
-      document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') hideTip(true); });
-
-      // Scroll/resize — “debounce” preko rAF
-      let raf=null;
-      const deb = ()=>{ if (raf) cancelAnimationFrame(raf); raf = requestAnimationFrame(()=> hideTip(true)); };
-      window.addEventListener('scroll', deb, {passive:true});
-      window.addEventListener('resize', deb);
-    };
-
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', ready, {once:true});
-    } else {
-      ready();
-    }
-  }catch(e){
-    console.warn('Tooltip init error:', e);
-  }
-})();
-
-/* =========================
-   OSTATak APLIKACIJE (logika netaknuta)
-   ========================= */
 (function(){
   const el = (id) => document.getElementById(id);
 
@@ -163,7 +25,7 @@
   writeAff(readAff()); // refresh UI
 
   // Helpers
-  function showStatus(t, kind){ if(!status) return; status.textContent=t||''; status.className='status'+(kind?(' '+kind):''); }
+  function showStatus(t, kind){ status.textContent=t||''; status.className='status'+(kind?(' '+kind):''); }
   function getLines(textarea){ return (textarea?.value||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean); }
   function normalizeUrlInput(raw){ let s=(raw||'').trim(); if(!s) return ''; if(!/^https?:\/\//i.test(s)) s='https://'+s; return s; }
 
@@ -181,7 +43,7 @@
       .split(/\r?\n/).map(stripUrlComment).map(s=>s.trim()).filter(Boolean);
   }
 
-  // Networks (isto)
+  // Networks
   const NETWORKS = [
     { id:"amazon", host:/(^|\.)amazon\./i, subParam:"ascsubtag", keep:["tag","ascsubtag"],
       remove:["qid","sr","ref","smid","spIA","keywords","_encoding"], deeplinkKeys:[], required:["tag"], label:"Amazon" },
@@ -210,8 +72,9 @@
     return 'unknown';
   }
   function netRecord(u){ const id=detectNetwork(u); return NETWORKS.find(n=>n.id===id)||NETWORKS[NETWORKS.length-1]; }
+  function netLabel(id){ return (NETWORKS.find(n=>n.id===id)||{}).label || id; }
 
-  // Cleaning helpers
+  // Cleaning
   function canonicalizeAmazon(url){
     const m1 = url.pathname.match(/\/dp\/([A-Z0-9]{10})/i);
     const m2 = url.pathname.match(/\/gp\/product\/([A-Z0-9]{10})/i);
@@ -262,7 +125,7 @@
     for (const raw of baseUrls){
       const init = normalizeUrlInput(raw);
       let urlObj; try{ urlObj=new URL(init);}catch{continue;}
-      const rec = NETWORKS.find(n=>n.host.test(new URL(init).hostname)) || NETWORKS[NETWORKS.length-1];
+      const rec = netRecord(init);
       if (rec.id==='amazon') canonicalizeAmazon(urlObj);
       let preserved = keepAffiliateParams(urlObj.href, rec, !!keepUTMs);
       const host = (()=>{ try{ return new URL(preserved).hostname; }catch{ return ''; } })();
@@ -312,15 +175,13 @@
     }
   }
 
-  // Render table
+  // Render ultra-clean table
   const smtTable = document.getElementById('smtTable'); // for copy interception
 
   function renderSummary(rows, urlCount, chCount){
-    if (!smtSummary) return;
     smtSummary.textContent = `Rows: ${rows.length} · URLs: ${urlCount} · Channels: ${chCount}`;
   }
   function renderTable(rows, showAllRows){
-    if (!smtTbody || !smtHint) return;
     smtTbody.innerHTML = '';
     if (!rows.length){
       smtTbody.innerHTML = '<tr><td colspan="3" class="dim">No preview.</td></tr>';
@@ -459,26 +320,94 @@
     return s;
   }
 
-  // Anti-copy u preview tabeli
+  /* ------------ Anti-copy u preview tabeli (samo 1+2) ------------ */
   (function setupNoCopy(){
-    try{
-      const tbl = document.getElementById('smtTable');
-      if (!tbl) return;
-      document.addEventListener('copy', (e)=>{
-        try{
-          const sel = window.getSelection && window.getSelection();
-          if (!sel || sel.isCollapsed) return;
-          const node = sel.anchorNode;
-          if (node && tbl.contains(node)){
-            e.preventDefault();
-            const msg = 'Preview is masked. Use Export CSV to get full results.';
-            if (e.clipboardData) e.clipboardData.setData('text/plain', msg);
-            else if (window.clipboardData) window.clipboardData.setData('Text', msg);
-            showStatus('Copy disabled in preview. Export CSV for full results.', 'warn');
-          }
-        }catch{}
-      }, true);
-    }catch{}
+    const tbl = document.getElementById('smtTable');
+    if (!tbl) return;
+
+    document.addEventListener('copy', (e)=>{
+      try{
+        const sel = window.getSelection && window.getSelection();
+        if (!sel || sel.isCollapsed) return;
+        const node = sel.anchorNode;
+        if (node && tbl.contains(node)){
+          e.preventDefault();
+          const msg = 'Preview is masked. Use Export CSV to get full results.';
+          if (e.clipboardData) e.clipboardData.setData('text/plain', msg);
+          else if (window.clipboardData) window.clipboardData.setData('Text', msg);
+          showStatus('Copy disabled in preview. Export CSV for full results.', 'warn');
+        }
+      }catch{ /* no-op */ }
+    }, true);
+  })();
+
+  /* ------------ Tooltip za info dugmad (i) — direktni listeneri ------------ */
+  (function setupInfoTooltips(){
+    let tipEl = null, currentBtn = null;
+
+    function scrollY(){ return window.scrollY ?? document.documentElement.scrollTop ?? 0; }
+    function scrollX(){ return window.scrollX ?? document.documentElement.scrollLeft ?? 0; }
+
+    function ensureTip(){
+      if (tipEl) return tipEl;
+      tipEl = document.createElement('div');
+      tipEl.className = 'tip-pop';
+      tipEl.style.display = 'none';
+      document.body.appendChild(tipEl);
+      return tipEl;
+    }
+    function showTip(btn){
+      const msg = btn.getAttribute('data-tip') || '';
+      const r = btn.getBoundingClientRect();
+      const pad = 8;
+      const t = ensureTip();
+      t.textContent = msg;
+      t.style.visibility = 'hidden';
+      t.style.display = 'block';
+      // Measure
+      const tw = t.offsetWidth, th = t.offsetHeight;
+      let top = scrollY() + r.top - th - pad;
+      let left = scrollX() + r.left + (r.width/2) - (tw/2);
+      if (top < scrollY() + 4) top = scrollY() + r.bottom + pad;
+      if (left < scrollX() + 8) left = scrollX() + 8;
+      if (left + tw > scrollX() + window.innerWidth - 8) left = scrollX() + window.innerWidth - tw - 8;
+      t.style.top = `${top}px`;
+      t.style.left = `${left}px`;
+      t.style.visibility = 'visible';
+      currentBtn = btn;
+    }
+    function hideTip(){
+      if (tipEl){ tipEl.style.display = 'none'; }
+      currentBtn = null;
+    }
+
+    function bind(btn){
+      // Klik/tap
+      btn.addEventListener('click', (e)=>{
+        e.preventDefault();
+        e.stopPropagation();          // spreči da dokument click odmah sakrije
+        if (currentBtn === btn) { hideTip(); return; }
+        showTip(btn);
+      });
+      // Tastatura: Enter/Space
+      btn.addEventListener('keydown', (e)=>{
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault(); e.stopPropagation();
+          if (currentBtn === btn) { hideTip(); return; }
+          showTip(btn);
+        }
+      });
+    }
+
+    // Veži direktno na sva “i” dugmad
+    document.querySelectorAll('.i-tip').forEach(bind);
+
+    // Klik bilo gde drugde zatvara
+    document.addEventListener('click', hideTip);
+    // ESC, scroll, resize zatvaraju
+    document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') hideTip(); });
+    window.addEventListener('scroll', hideTip, {passive:true});
+    window.addEventListener('resize', hideTip);
   })();
 
 })();
