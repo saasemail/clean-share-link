@@ -341,12 +341,12 @@
     }, true);
   })();
 
-  /* ------------ Tooltip za info dugmad (i) — direktni listeneri ------------ */
+  /* ------------ Tooltip za info dugmad (i) — precizno uz dugme ------------ */
   (function setupInfoTooltips(){
     let tipEl = null, currentBtn = null;
 
-    function scrollY(){ return window.scrollY ?? document.documentElement.scrollTop ?? 0; }
-    function scrollX(){ return window.scrollX ?? document.documentElement.scrollLeft ?? 0; }
+    const sY = ()=> window.scrollY ?? document.documentElement.scrollTop ?? 0;
+    const sX = ()=> window.scrollX ?? document.documentElement.scrollLeft ?? 0;
 
     function ensureTip(){
       if (tipEl) return tipEl;
@@ -356,6 +356,9 @@
       document.body.appendChild(tipEl);
       return tipEl;
     }
+
+    function clamp(val, min, max){ return Math.max(min, Math.min(max, val)); }
+
     function showTip(btn){
       const msg = btn.getAttribute('data-tip') || '';
       const r = btn.getBoundingClientRect();
@@ -364,32 +367,41 @@
       t.textContent = msg;
       t.style.visibility = 'hidden';
       t.style.display = 'block';
-      // Measure
-      const tw = t.offsetWidth, th = t.offsetHeight;
-      let top = scrollY() + r.top - th - pad;
-      let left = scrollX() + r.left + (r.width/2) - (tw/2);
-      if (top < scrollY() + 4) top = scrollY() + r.bottom + pad;
-      if (left < scrollX() + 8) left = scrollX() + 8;
-      if (left + tw > scrollX() + window.innerWidth - 8) left = scrollX() + window.innerWidth - tw - 8;
-      t.style.top = `${top}px`;
+
+      // Izmeri dimenzije tooltips-a
+      const tw = t.offsetWidth;
+      const th = t.offsetHeight;
+
+      // Primarno: ispod i levo-poravnat sa dugmetom
+      let top  = sY() + r.bottom + pad;
+      let left = sX() + r.left;
+
+      // Ako nema mesta ispod, prebaci iznad
+      if (top + th > sY() + window.innerHeight - 4){
+        top = sY() + r.top - th - pad;
+      }
+
+      // Klampuj horizontalno u viewport (8px margina)
+      left = clamp(left, sX() + 8, sX() + window.innerWidth - tw - 8);
+
+      t.style.top  = `${top}px`;
       t.style.left = `${left}px`;
       t.style.visibility = 'visible';
       currentBtn = btn;
     }
+
     function hideTip(){
       if (tipEl){ tipEl.style.display = 'none'; }
       currentBtn = null;
     }
 
     function bind(btn){
-      // Klik/tap
       btn.addEventListener('click', (e)=>{
         e.preventDefault();
-        e.stopPropagation();          // spreči da dokument click odmah sakrije
+        e.stopPropagation();
         if (currentBtn === btn) { hideTip(); return; }
         showTip(btn);
       });
-      // Tastatura: Enter/Space
       btn.addEventListener('keydown', (e)=>{
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault(); e.stopPropagation();
@@ -399,12 +411,8 @@
       });
     }
 
-    // Veži direktno na sva “i” dugmad
     document.querySelectorAll('.i-tip').forEach(bind);
-
-    // Klik bilo gde drugde zatvara
     document.addEventListener('click', hideTip);
-    // ESC, scroll, resize zatvaraju
     document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') hideTip(); });
     window.addEventListener('scroll', hideTip, {passive:true});
     window.addEventListener('resize', hideTip);
