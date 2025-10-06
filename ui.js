@@ -341,4 +341,50 @@
     }, true);
   })();
 
+  /* ------------ Tooltip za info dugmad (i) ------------ */
+  (function setupInfoTooltips(){
+    let tipEl = null;
+    function ensureTip(){
+      if (tipEl) return tipEl;
+      tipEl = document.createElement('div');
+      tipEl.className = 'tip-pop';
+      document.body.appendChild(tipEl);
+      return tipEl;
+    }
+    function showTip(btn){
+      const msg = btn.getAttribute('data-tip') || '';
+      const r = btn.getBoundingClientRect();
+      const pad = 8;
+      const t = ensureTip();
+      t.textContent = msg;
+      // Pozicioniraj iznad dugmeta (ili ispod ako nema mesta)
+      document.body.appendChild(t);
+      t.style.visibility = 'hidden';
+      t.style.display = 'block';
+      const tw = t.offsetWidth, th = t.offsetHeight;
+      let top = window.scrollY + r.top - th - pad;
+      let left = window.scrollX + r.left + (r.width/2) - (tw/2);
+      if (top < window.scrollY + 4) top = window.scrollY + r.bottom + pad;
+      if (left < window.scrollX + 8) left = window.scrollX + 8;
+      if (left + tw > window.scrollX + window.innerWidth - 8) left = window.scrollX + window.innerWidth - tw - 8;
+      t.style.top = `${top}px`;
+      t.style.left = `${left}px`;
+      t.style.visibility = 'visible';
+    }
+    function hideTip(){
+      if (tipEl){ tipEl.style.display = 'none'; }
+    }
+    // Delegacija klika na dugmad sa klasom .i-tip
+    document.addEventListener('click', (e)=>{
+      const btn = e.target.closest && e.target.closest('.i-tip');
+      if (btn){ e.preventDefault(); e.stopPropagation(); showTip(btn); return; }
+      hideTip();
+    });
+    // ESC zatvara
+    document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') hideTip(); });
+    // Na scroll/resize sakrij
+    window.addEventListener('scroll', hideTip, {passive:true});
+    window.addEventListener('resize', hideTip);
+  })();
+
 })();

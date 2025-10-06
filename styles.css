@@ -18,7 +18,6 @@ body{
 .logo-dot{width:12px;height:12px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-2));box-shadow:0 0 18px rgba(116,240,192,.45)}
 h1{font-size:20px;margin:0}
 .hdr-actions{display:flex;align-items:center;gap:10px}
-.badge-credits{border:1px solid var(--stroke);background:linear-gradient(180deg,#141a21,#10151b);color:#b6c8ff;padding:6px 10px;border-radius:10px;font-size:13px}
 
 /* Layout */
 .wrap{max-width:860px;margin:22px auto 40px;padding:0 16px}
@@ -67,26 +66,18 @@ h1{font-size:20px;margin:0}
 .btn.primary{background:linear-gradient(180deg,#1a2330,#141a21);border-color:#2b3a4f}
 .btn.subtle{opacity:.9}
 .result-actions{display:flex;gap:10px;margin-top:10px}
-.spacer{flex:1}
 
-/* States */
+/* Status */
 .status{margin-top:6px;font-size:14px}
-.status.ok{color:var(--ok)} .status.warn{color:var(--warn)} .status.err{color:var(--err)}
+.status.ok{color:#79e391} .status.warn{color:#ffd479} .status.err{color:#ff5c73}
 
 /* Summary */
 .smt-summary{margin-top:6px; padding:6px 10px; border:1px dashed #2b3a4f; border-radius:10px}
 
-/* Ultra-clean table */
-.tbl-wrap{margin-top:10px; overflow:auto}
-/* ⛔ Onemogući selekciju i long-press copy u preview tabeli */
-.tbl-wrap{
-  -webkit-user-select:none; user-select:none;
-  -webkit-touch-callout:none;
-}
+/* Ultra-clean table + anti-copy */
+.tbl-wrap{margin-top:10px; overflow:auto; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;}
 .tbl{
-  width:100%;
-  border-collapse:separate; border-spacing:0;
-  table-layout:fixed;
+  width:100%; border-collapse:separate; border-spacing:0; table-layout:fixed;
 }
 .tbl thead th{
   text-align:left; font-weight:600; font-size:13px; color:#cfd6e6;
@@ -96,39 +87,42 @@ h1{font-size:20px;margin:0}
 .tbl thead th:nth-child(1){ width:120px; }
 .tbl thead th:nth-child(2){ width:160px; }
 .tbl thead th:nth-child(3){ width:auto; }
-
 .tbl tbody td{
-  border:1px solid var(--stroke); border-top:none;
-  padding:12px 14px; line-height:1.55;
-  vertical-align:top; background:#0c1015;
-  word-wrap:break-word;
+  border:1px solid var(--stroke); border-top:none; padding:12px 14px; line-height:1.55;
+  vertical-align:top; background:#0c1015; word-wrap:break-word;
 }
 .tbl tbody tr:first-child td{ border-top:1px solid var(--stroke) }
-
 .tbl code{
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-size:13.5px; line-height:1.6;
-  white-space:normal; overflow-wrap:anywhere; word-break:break-word;
+  font-size:13.5px; line-height:1.6; white-space:normal; overflow-wrap:anywhere; word-break:break-word;
 }
 .tbl tbody tr:nth-child(odd) td{ background:#0d1218; }
 .tbl tbody tr:hover td{ background:#10161d; }
-
-.tbl .badge-net{
-  display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid #2b3a4f; font-size:12px; color:#cfe3ff; background:#0f1419;
-}
+.tbl .badge-net{ display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid #2b3a4f; font-size:12px; color:#cfe3ff; background:#0f1419; }
 .dim{opacity:.7}
 
 /* Supported networks strip */
-.net-strip{
-  margin:16px 0 10px; display:flex; flex-wrap:wrap; gap:8px; align-items:center;
-}
+.net-strip{ margin:16px 0 10px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
 .net-title{ color:#cfd6e6; font-size:12.5px; margin-right:4px; }
 .net-badge{
   display:inline-block; padding:6px 10px; border-radius:999px;
-  border:1px solid #2b3a4f; background:#0f1419; color:#cfe3ff; font-size:12.5px;
-  text-decoration:none;
+  border:1px solid #2b3a4f; background:#0f1419; color:#cfe3ff; font-size:12.5px; text-decoration:none;
 }
 .net-badge:hover{ border-color:#3a4e6a; }
+
+/* Info button + tooltip */
+.i-tip{
+  margin-left:6px; width:18px; height:18px; border-radius:50%;
+  border:1px solid #2b3a4f; background:#0f1419; color:#cfe3ff;
+  font-size:12px; line-height:16px; text-align:center; cursor:pointer;
+}
+.i-tip:hover{ border-color:#3a4e6a; }
+.tip-pop{
+  position:fixed; z-index:9999; max-width:280px;
+  background:#0f1419; color:#e6e7ea; border:1px solid #2b3a4f; border-radius:10px;
+  padding:10px 12px; box-shadow:0 10px 30px rgba(0,0,0,.45);
+  font-size:12.5px; line-height:1.45;
+}
 
 /* Footer */
 .foot{margin-top:16px;text-align:center;font-size:13px}
