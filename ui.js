@@ -341,13 +341,18 @@
     }, true);
   })();
 
-  /* ------------ Tooltip za info dugmad (i) ------------ */
+  /* ------------ Tooltip za info dugmad (i) — direktni listeneri ------------ */
   (function setupInfoTooltips(){
-    let tipEl = null;
+    let tipEl = null, currentBtn = null;
+
+    function scrollY(){ return window.scrollY ?? document.documentElement.scrollTop ?? 0; }
+    function scrollX(){ return window.scrollX ?? document.documentElement.scrollLeft ?? 0; }
+
     function ensureTip(){
       if (tipEl) return tipEl;
       tipEl = document.createElement('div');
       tipEl.className = 'tip-pop';
+      tipEl.style.display = 'none';
       document.body.appendChild(tipEl);
       return tipEl;
     }
@@ -357,32 +362,50 @@
       const pad = 8;
       const t = ensureTip();
       t.textContent = msg;
-      // Pozicioniraj iznad dugmeta (ili ispod ako nema mesta)
-      document.body.appendChild(t);
       t.style.visibility = 'hidden';
       t.style.display = 'block';
+      // Measure
       const tw = t.offsetWidth, th = t.offsetHeight;
-      let top = window.scrollY + r.top - th - pad;
-      let left = window.scrollX + r.left + (r.width/2) - (tw/2);
-      if (top < window.scrollY + 4) top = window.scrollY + r.bottom + pad;
-      if (left < window.scrollX + 8) left = window.scrollX + 8;
-      if (left + tw > window.scrollX + window.innerWidth - 8) left = window.scrollX + window.innerWidth - tw - 8;
+      let top = scrollY() + r.top - th - pad;
+      let left = scrollX() + r.left + (r.width/2) - (tw/2);
+      if (top < scrollY() + 4) top = scrollY() + r.bottom + pad;
+      if (left < scrollX() + 8) left = scrollX() + 8;
+      if (left + tw > scrollX() + window.innerWidth - 8) left = scrollX() + window.innerWidth - tw - 8;
       t.style.top = `${top}px`;
       t.style.left = `${left}px`;
       t.style.visibility = 'visible';
+      currentBtn = btn;
     }
     function hideTip(){
       if (tipEl){ tipEl.style.display = 'none'; }
+      currentBtn = null;
     }
-    // Delegacija klika na dugmad sa klasom .i-tip
-    document.addEventListener('click', (e)=>{
-      const btn = e.target.closest && e.target.closest('.i-tip');
-      if (btn){ e.preventDefault(); e.stopPropagation(); showTip(btn); return; }
-      hideTip();
-    });
-    // ESC zatvara
+
+    function bind(btn){
+      // Klik/tap
+      btn.addEventListener('click', (e)=>{
+        e.preventDefault();
+        e.stopPropagation();          // spreči da dokument click odmah sakrije
+        if (currentBtn === btn) { hideTip(); return; }
+        showTip(btn);
+      });
+      // Tastatura: Enter/Space
+      btn.addEventListener('keydown', (e)=>{
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault(); e.stopPropagation();
+          if (currentBtn === btn) { hideTip(); return; }
+          showTip(btn);
+        }
+      });
+    }
+
+    // Veži direktno na sva “i” dugmad
+    document.querySelectorAll('.i-tip').forEach(bind);
+
+    // Klik bilo gde drugde zatvara
+    document.addEventListener('click', hideTip);
+    // ESC, scroll, resize zatvaraju
     document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') hideTip(); });
-    // Na scroll/resize sakrij
     window.addEventListener('scroll', hideTip, {passive:true});
     window.addEventListener('resize', hideTip);
   })();
