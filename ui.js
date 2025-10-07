@@ -259,60 +259,100 @@
     setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 100);
   }
 
+  
   function exportCsv(){
     const urls = getUrlLines(), ch = getLines(channelsIn);
     if (!urls.length) { showStatus('Add URLs.', 'err'); return; }
     if (!ch.length)   { showStatus('Add channels.', 'err'); return; }
-    if (!ensureCredit()) return;
+
+    const grant = readGrant();
+    if (!grant){
+      openPackageChooser();
+      return;
+    }
+    const urlCount = urls.length;
+    if (urlCount > (grant.limit||0)){
+      showStatus(`Your package allows up to ${grant.limit} URLs, but you entered ${urlCount}. Reduce URLs or choose a larger package.`, 'warn');
+      openPackageChooser();
+      return;
+    }
+
     const rows = buildMatrix(urls, ch, !!keepUtms?.checked);
     if (!rows.length){ showStatus('Nothing to export.', 'err'); return; }
     downloadCsv(rows);
-    writeAff(readAff()-1);
-    showStatus(`SubID CSV exported • –1 credit • ${rows.length} rows`, 'ok');
+    consumeGrant();
+    showStatus(`SubID CSV exported • package ${grant.sku} • ${rows.length} rows`, 'ok');
   }
+
 
   if (analyzeBtn) analyzeBtn.addEventListener('click', analyze);
   if (exportBtn)  exportBtn.addEventListener('click', exportCsv);
 
-  // FastSpring glue (AFF1/AFF5/AFF20)
-  async function waitForFS(ms=4000){
+  
+  // FastSpring glue — Pay-per-use packages (SMT-STARTER / SMT-PRO / SMT-AGENCY)
+  // One purchase = one export, with URL cap per package.
+  const GRANT_KEY = 'smt_purchase_grant_v1'; // JSON: {sku, limit, ts}
+  function readGrant(){
+    try{ const o = JSON.parse(localStorage.getItem(GRANT_KEY)||'null'); return o && typeof o==='object' ? o : null; }catch{ return null; }
+  }
+  function writeGrant(o){
+    try{ if (o) localStorage.setItem(GRANT_KEY, JSON.stringify(o)); else localStorage.removeItem(GRANT_KEY); }catch{}
+  }
+  function consumeGrant(){ writeGrant(null); }
+
+  function urlLimitForSku(sku){
+    const s = String(sku||'').toUpperCase();
+    if (s.includes('SMT-STARTER')) return 10;
+    if (s.includes('SMT-PRO'))     return 50;
+    if (s.includes('SMT-AGENCY'))  return 100;
+    return 0;
+  }
+  async function waitForFS(ms=6000){
     const t0=Date.now();
     while(!window.fastspring || !window.fastspring.builder){
       if(Date.now()-t0>ms) throw new Error('FastSpring not loaded');
-      await new Promise(r=>setTimeout(r,25));
+      await new Promise(r=>setTimeout(r,30));
     }
     return window.fastspring;
   }
-  function registerFSEvents(fs){
-    if (!fs || !fs.builder || !fs.builder.on) return;
-    const handler = (evt)=>{
-      try{
-        const items = (evt.items || evt.data?.items || evt.events?.[0]?.data?.items) || [];
-        for (const it of items){
-          const sku = String(it.path || it.product || it.sku || it.display || it.id || '').toLowerCase();
-          if (/^aff1$/.test(sku))  writeAff(readAff()+1);
-          if (/^aff5$/.test(sku))  writeAff(readAff()+5);
-          if (/^aff20$/.test(sku)) writeAff(readAff()+20);
-        }
-      }catch{}
-    };
-    ['purchased','completed','complete','order.completed','checkout.completed'].forEach(n=>{ try{ fs.builder.on(n, handler); }catch{} });
-  }
-  if (buyAffBtn){
-    buyAffBtn.addEventListener('click', async ()=>{
+  function openPackageChooser(){
+    (async()=>{
       try{
         const fs = await waitForFS();
-        registerFSEvents(fs);
         try{ fs.builder.reset(); }catch{}
-        fs.builder.add('aff5');
-        fs.builder.checkout();
-      }catch(e){ console.warn(e); showStatus('Checkout is loading… try again shortly.', 'warn'); }
-    });
+        fs.builder.checkout(); // shows homepage with our three packages
+        showStatus('Choose a package to continue.', 'warn');
+      }catch(e){
+        console.warn(e); showStatus('Checkout is loading… try again in a moment.', 'warn');
+      }
+    })();
   }
-  (async()=>{ try{ const fs=await waitForFS(6000); registerFSEvents(fs);}catch{} })();
+  function registerPurchaseHandlers(fs){
+    if (!fs || !fs.builder || !fs.builder.on) return;
+    const onComplete = (evt)=>{
+      try{
+        const items = (evt?.items || evt?.data?.items || evt?.events?.[0]?.data?.items) || [];
+        for (const it of items){
+          const sku = it.path || it.product || it.sku || it.display || it.id || '';
+          const cap = urlLimitForSku(sku);
+          if (cap>0){
+            writeGrant({ sku: String(sku), limit: cap, ts: Date.now() });
+            showStatus(`Package activated: ${String(sku)} — up to ${cap} URLs. Click Export CSV.`, 'ok');
+            return;
+          }
+        }
+      }catch(e){ console.warn('parse purchase', e); }
+    };
+    const onCancel = ()=> showStatus('Purchase canceled or failed — try again.', 'warn');
+    ['purchased','completed','complete','order.completed','checkout.completed'].forEach(n=>{ try{ fs.builder.on(n, onComplete); }catch{} });
+    ['canceled','cancel','checkout.abandoned','order.canceled'].forEach(n=>{ try{ fs.builder.on(n, onCancel); }catch{} });
+  }
+  (async()=>{ try{ const fs = await waitForFS(); registerPurchaseHandlers(fs);}catch{} })();
 
-  // Channel normalize
-  function normalizeChannel(label){
+  if (buyAffBtn){
+    buyAffBtn.addEventListener('click', (e)=>{ e.preventDefault(); openPackageChooser(); });
+  }
+function normalizeChannel(label){
     let s=(label||'').toLowerCase().trim();
     s = s.normalize ? s.normalize('NFD').replace(/[\u0300-\u036f]/g,'') : s;
     s = s.replace(/[^a-z0-9\-_]+/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
