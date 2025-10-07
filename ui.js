@@ -237,15 +237,15 @@
     showStatus('Analyze ready.', 'ok');
   }
 
+  // If nema kredita → odmah otvori FS popup (homepage) i vrati false
   function ensureCredit(){
     const n = readAff(); 
     if (n>0) return true;
-    // open FastSpring chooser (homepage with packages)
     (async()=>{
       try{
         const fs = await waitForFS(6000);
         try{ fs.builder.reset(); }catch{}
-        fs.builder.checkout(); // open homepage (Starter/Pro/Agency)
+        fs.builder.checkout(); // HOME (Starter / Pro / Agency)
         showStatus('Choose a package to continue.', 'warn');
       }catch(e){ console.warn(e); showStatus('Checkout is loading… try again shortly.', 'warn'); }
     })();
@@ -273,7 +273,7 @@
     const urls = getUrlLines(), ch = getLines(channelsIn);
     if (!urls.length) { showStatus('Add URLs.', 'err'); return; }
     if (!ch.length)   { showStatus('Add channels.', 'err'); return; }
-    if (!ensureCredit()) return;
+    if (!ensureCredit()) return; // ako nema kredita, otvori popup i prekini
     const rows = buildMatrix(urls, ch, !!keepUtms?.checked);
     if (!rows.length){ showStatus('Nothing to export.', 'err'); return; }
     downloadCsv(rows);
@@ -284,8 +284,8 @@
   if (analyzeBtn) analyzeBtn.addEventListener('click', analyze);
   if (exportBtn)  exportBtn.addEventListener('click', exportCsv);
 
-  // FastSpring glue (AFF1/AFF5/AFF20)
-  async function waitForFS(ms=6000){
+  // FastSpring glue — HOME popup + kredit po kupovini (SMT-* ili AFF*)
+  async function waitForFS(ms=4000){
     const t0=Date.now();
     while(!window.fastspring || !window.fastspring.builder){
       if(Date.now()-t0>ms) throw new Error('FastSpring not loaded');
@@ -300,9 +300,14 @@
         const items = (evt.items || evt.data?.items || evt.events?.[0]?.data?.items) || [];
         for (const it of items){
           const sku = String(it.path || it.product || it.sku || it.display || it.id || '').toLowerCase();
+          // stari SKU-ovi (ako ih imaš)
           if (/^aff1$/.test(sku))  writeAff(readAff()+1);
           if (/^aff5$/.test(sku))  writeAff(readAff()+5);
           if (/^aff20$/.test(sku)) writeAff(readAff()+20);
+          // novi paketi — jedan export kredit po kupovini
+          if (/^smt\-starter$/.test(sku) || /^smt\-pro$/.test(sku) || /^smt\-agency$/.test(sku)){
+            writeAff(readAff()+1);
+          }
         }
       }catch{}
     };
@@ -312,8 +317,10 @@
     buyAffBtn.addEventListener('click', async ()=>{
       try{
         const fs = await waitForFS(6000);
+        registerFSEvents(fs);
         try{ fs.builder.reset(); }catch{}
-        fs.builder.checkout(); // show Starter / Pro / Agency
+        // NE dodajemo artikle → otvaramo HOME s paketima
+        fs.builder.checkout();
         showStatus('Choose a package to continue.', 'warn');
       }catch(e){ console.warn(e); showStatus('Checkout is loading… try again shortly.', 'warn'); }
     });
@@ -350,8 +357,6 @@
     }, true);
   })();
 
-  /* ------------ Tooltip za info dugmad (i) — direktni listeneri ------------ */
-  
   /* ------------ Tooltip za info dugmad (i) — mobilni + desktop safe (fixed) ------------ */
   (function setupInfoTooltips(){
     let tipEl = null, currentBtn = null;
