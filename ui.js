@@ -238,8 +238,18 @@
   }
 
   function ensureCredit(){
-    const n = readAff(); if (n>0) return true;
-    showStatus(); return false;
+    const n = readAff(); 
+    if (n>0) return true;
+    // open FastSpring chooser (homepage with packages)
+    (async()=>{
+      try{
+        const fs = await waitForFS(6000);
+        try{ fs.builder.reset(); }catch{}
+        fs.builder.checkout(); // open homepage (Starter/Pro/Agency)
+        showStatus('Choose a package to continue.', 'warn');
+      }catch(e){ console.warn(e); showStatus('Checkout is loading… try again shortly.', 'warn'); }
+    })();
+    return false;
   }
 
   function downloadCsv(rows){
@@ -260,41 +270,22 @@
   }
 
   function exportCsv(){
-
-  const urls = getUrlLines(), ch = getLines(channelsIn);
-  if (!urls.length) { showStatus('Add URLs.', 'err'); return; }
-  if (!ch.length)   { showStatus('Add channels.', 'err'); return; }
-  const grant = smtReadGrant();
-  if (!grant){ fsOpenChooser(); showStatus('Choose a package to continue.', 'warn'); return; }
-  const urlCount = urls.length;
-  if (urlCount > (grant.limit||0)){
-    showStatus(`Your package allows up to ${grant.limit} URLs, but you entered ${urlCount}. Reduce URLs or choose a larger package.`, 'warn');
-    fsOpenChooser(); return;
+    const urls = getUrlLines(), ch = getLines(channelsIn);
+    if (!urls.length) { showStatus('Add URLs.', 'err'); return; }
+    if (!ch.length)   { showStatus('Add channels.', 'err'); return; }
+    if (!ensureCredit()) return;
+    const rows = buildMatrix(urls, ch, !!keepUtms?.checked);
+    if (!rows.length){ showStatus('Nothing to export.', 'err'); return; }
+    downloadCsv(rows);
+    writeAff(readAff()-1);
+    showStatus(`SubID CSV exported • –1 credit • ${rows.length} rows`, 'ok');
   }
-  const rows = buildMatrix(urls, ch, !!keepUtms?.checked);
-  if (!rows.length){ showStatus('Nothing to export.', 'err'); return; }
-  downloadCsv(rows);
-  smtConsumeGrant();
-  showStatus(`SubID CSV exported • package ${grant.sku} • ${rows.length} rows`, 'ok');
-}
 
   if (analyzeBtn) analyzeBtn.addEventListener('click', analyze);
   if (exportBtn)  exportBtn.addEventListener('click', exportCsv);
 
-  
-  // ===== Pay-per-use (Starter / Pro / Agency) via FastSpring =====
-  const SMT_GRANT_KEY = 'smt_pay_per_use_v1'; // { sku, limit, ts }
-  function smtReadGrant(){ try{ return JSON.parse(localStorage.getItem(SMT_GRANT_KEY)||'null'); }catch{return null;} }
-  function smtWriteGrant(o){ try{ if(o) localStorage.setItem(SMT_GRANT_KEY, JSON.stringify(o)); else localStorage.removeItem(SMT_GRANT_KEY);}catch{} }
-  function smtConsumeGrant(){ smtWriteGrant(null); }
-  function smtLimitForSku(sku){
-    const s = String(sku||'').toUpperCase();
-    if (s.includes('SMT-STARTER')) return 10;
-    if (s.includes('SMT-PRO'))     return 50;
-    if (s.includes('SMT-AGENCY'))  return 100;
-    return 0;
-  }
-  async function fsWait(ms=6000){
+  // FastSpring glue (AFF1/AFF5/AFF20)
+  async function waitForFS(ms=6000){
     const t0=Date.now();
     while(!window.fastspring || !window.fastspring.builder){
       if(Date.now()-t0>ms) throw new Error('FastSpring not loaded');
@@ -302,47 +293,62 @@
     }
     return window.fastspring;
   }
-  function fsOpenChooser(){ // open popup homepage with our 3 packages
-    (async()=>{
+  function registerFSEvents(fs){
+    if (!fs || !fs.builder || !fs.builder.on) return;
+    const handler = (evt)=>{
       try{
-        const fs = await fsWait();
-        try{ fs.builder.reset(); }catch{}
-        fs.builder.checkout(); // no items -> homepage (Starter/Pro/Agency)
-      }catch(e){ console.warn(e); showStatus('Checkout is loading… try again.', 'warn'); }
-    })();
-  }
-  function fsRegisterHandlers(){
-    (async()=>{
-      try{
-        const fs = await fsWait();
-        if (!fs.builder || !fs.builder.on) return;
-        const onComplete = (evt)=>{
-          try{
-            const items = (evt?.items || evt?.data?.items || evt?.events?.[0]?.data?.items) || [];
-            for(const it of items){
-              const sku = it.path || it.product || it.sku || it.display || it.id || '';
-              const cap = smtLimitForSku(sku);
-              if (cap>0){
-                smtWriteGrant({ sku:String(sku), limit:cap, ts:Date.now() });
-                showStatus(`Package activated: ${String(sku)} — up to ${cap} URLs. Click Export CSV.`, 'ok');
-                return;
-              }
-            }
-          }catch(e){ console.warn('parse purchase', e); }
-        };
-        const onCancel = ()=> showStatus('Purchase canceled or failed — try again.', 'warn');
-        ['purchased','completed','complete','order.completed','checkout.completed'].forEach(n=>{ try{ fs.builder.on(n, onComplete);}catch{} });
-        ['canceled','cancel','checkout.abandoned','order.canceled'].forEach(n=>{ try{ fs.builder.on(n, onCancel);}catch{} });
+        const items = (evt.items || evt.data?.items || evt.events?.[0]?.data?.items) || [];
+        for (const it of items){
+          const sku = String(it.path || it.product || it.sku || it.display || it.id || '').toLowerCase();
+          if (/^aff1$/.test(sku))  writeAff(readAff()+1);
+          if (/^aff5$/.test(sku))  writeAff(readAff()+5);
+          if (/^aff20$/.test(sku)) writeAff(readAff()+20);
+        }
       }catch{}
-    })();
+    };
+    ['purchased','completed','complete','order.completed','checkout.completed'].forEach(n=>{ try{ fs.builder.on(n, handler); }catch{} });
   }
-  fsRegisterHandlers();
+  if (buyAffBtn){
+    buyAffBtn.addEventListener('click', async ()=>{
+      try{
+        const fs = await waitForFS(6000);
+        try{ fs.builder.reset(); }catch{}
+        fs.builder.checkout(); // show Starter / Pro / Agency
+        showStatus('Choose a package to continue.', 'warn');
+      }catch(e){ console.warn(e); showStatus('Checkout is loading… try again shortly.', 'warn'); }
+    });
+  }
+  (async()=>{ try{ const fs=await waitForFS(6000); registerFSEvents(fs);}catch{} })();
 
-  function ensureCredit(){
-    const g = smtReadGrant();
-    if (!g){ fsOpenChooser(); showStatus('Choose a package to continue.', 'warn'); return false; }
-    return true;
+  // Channel normalize
+  function normalizeChannel(label){
+    let s=(label||'').toLowerCase().trim();
+    s = s.normalize ? s.normalize('NFD').replace(/[\u0300-\u036f]/g,'') : s;
+    s = s.replace(/[^a-z0-9\-_]+/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
+    if (s.length>24) s=s.slice(0,24);
+    return s;
   }
+
+  /* ------------ Anti-copy u preview tabeli (samo 1+2) ------------ */
+  (function setupNoCopy(){
+    const tbl = document.getElementById('smtTable');
+    if (!tbl) return;
+
+    document.addEventListener('copy', (e)=>{
+      try{
+        const sel = window.getSelection && window.getSelection();
+        if (!sel || sel.isCollapsed) return;
+        const node = sel.anchorNode;
+        if (node && tbl.contains(node)){
+          e.preventDefault();
+          const msg = 'Preview is masked. Use Export CSV to get full results.';
+          if (e.clipboardData) e.clipboardData.setData('text/plain', msg);
+          else if (window.clipboardData) window.clipboardData.setData('Text', msg);
+          showStatus('Copy disabled in preview. Export CSV for full results.', 'warn');
+        }
+      }catch{ /* no-op */ }
+    }, true);
+  })();
 
   /* ------------ Tooltip za info dugmad (i) — direktni listeneri ------------ */
   
