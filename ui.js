@@ -238,11 +238,11 @@
   }
 
   function ensureCredit(){
-    const g = smtReadGrant();
-    if (!g){ fsOpenChooser(); showStatus('Choose a package to continue.', 'warn'); return false; }
-    return true;
+    const n = readAff(); if (n>0) return true;
+    showStatus(); return false;
   }
-function downloadCsv(rows){
+
+  function downloadCsv(rows){
     const header = ["index","base_url","network","channel_code","subid_param","final_url","notes"];
     const csv = [header].concat(rows.map(r=>[
       r.index,r.base_url,r.network,r.channel_code,r.subid_param,r.final_url,r.notes||""
@@ -261,68 +261,30 @@ function downloadCsv(rows){
 
   function exportCsv(){
 
-    const urls = getUrlLines(), ch = getLines(channelsIn);
-    if (!urls.length) { showStatus('Add URLs.', 'err'); return; }
-    if (!ch.length)   { showStatus('Add channels.', 'err'); return; }
-    const grant = smtReadGrant();
-    if (!grant){ fsOpenChooser(); showStatus('Choose a package to continue.', 'warn'); return; }
-    const urlCount = urls.length;
-    if (urlCount > (grant.limit||0)){
-      showStatus(`Your package allows up to ${grant.limit} URLs, but you entered ${urlCount}. Reduce URLs or choose a larger package.`, 'warn');
-      fsOpenChooser(); return;
-    }
-    const rows = buildMatrix(urls, ch, !!keepUtms?.checked);
-    if (!rows.length){ showStatus('Nothing to export.', 'err'); return; }
-    downloadCsv(rows);
-    smtConsumeGrant();
-    showStatus(`SubID CSV exported • package ${grant.sku} • ${rows.length} rows`, 'ok');
+  const urls = getUrlLines(), ch = getLines(channelsIn);
+  if (!urls.length) { showStatus('Add URLs.', 'err'); return; }
+  if (!ch.length)   { showStatus('Add channels.', 'err'); return; }
+  const grant = smtReadGrant();
+  if (!grant){ fsOpenChooser(); showStatus('Choose a package to continue.', 'warn'); return; }
+  const urlCount = urls.length;
+  if (urlCount > (grant.limit||0)){
+    showStatus(`Your package allows up to ${grant.limit} URLs, but you entered ${urlCount}. Reduce URLs or choose a larger package.`, 'warn');
+    fsOpenChooser(); return;
+  }
+  const rows = buildMatrix(urls, ch, !!keepUtms?.checked);
+  if (!rows.length){ showStatus('Nothing to export.', 'err'); return; }
+  downloadCsv(rows);
+  smtConsumeGrant();
+  showStatus(`SubID CSV exported • package ${grant.sku} • ${rows.length} rows`, 'ok');
 }
 
   if (analyzeBtn) analyzeBtn.addEventListener('click', analyze);
   if (exportBtn)  exportBtn.addEventListener('click', exportCsv);
 
-  // FastSpring glue (AFF1/AFF5/AFF20)
-  async function waitForFS(ms=4000){
-    const t0=Date.now();
-    while(!window.fastspring || !window.fastspring.builder){
-      if(Date.now()-t0>ms) throw new Error('FastSpring not loaded');
-      await new Promise(r=>setTimeout(r,25));
-    }
-    return window.fastspring;
-  }
-  function registerFSEvents(fs){
-    if (!fs || !fs.builder || !fs.builder.on) return;
-    const handler = (evt)=>{
-      try{
-        const items = (evt.items || evt.data?.items || evt.events?.[0]?.data?.items) || [];
-        for (const it of items){
-          const sku = String(it.path || it.product || it.sku || it.display || it.id || '').toLowerCase();
-          if (/^aff1$/.test(sku))  writeAff(readAff()+1);
-          if (/^aff5$/.test(sku))  writeAff(readAff()+5);
-          if (/^aff20$/.test(sku)) writeAff(readAff()+20);
-        }
-      }catch{}
-    };
-    ['purchased','completed','complete','order.completed','checkout.completed'].forEach(n=>{ try{ fs.builder.on(n, handler); }catch{} });
-  }
-  if (buyAffBtn){
-    buyAffBtn.addEventListener('click', async ()=>{
-      try{
-        const fs = await waitForFS();
-        registerFSEvents(fs);
-        try{ fs.builder.reset(); }catch{}
-        fs.builder.add('aff5');
-        fs.builder.checkout();
-      }catch(e){ console.warn(e); showStatus('Checkout is loading… try again shortly.', 'warn'); }
-    });
-  }
-  (async()=>{ try{ const fs=await waitForFS(6000); registerFSEvents(fs);}catch{} })();
-
-  // Channel normalize
   
-  // ===== Pay-per-use packages (Starter/Pro/Agency) =====
+  // ===== Pay-per-use (Starter / Pro / Agency) via FastSpring =====
   const SMT_GRANT_KEY = 'smt_pay_per_use_v1'; // { sku, limit, ts }
-  function smtReadGrant(){ try{ return JSON.parse(localStorage.getItem(SMT_GRANT_KEY) || 'null'); }catch{return null;} }
+  function smtReadGrant(){ try{ return JSON.parse(localStorage.getItem(SMT_GRANT_KEY)||'null'); }catch{return null;} }
   function smtWriteGrant(o){ try{ if(o) localStorage.setItem(SMT_GRANT_KEY, JSON.stringify(o)); else localStorage.removeItem(SMT_GRANT_KEY);}catch{} }
   function smtConsumeGrant(){ smtWriteGrant(null); }
   function smtLimitForSku(sku){
@@ -340,16 +302,13 @@ function downloadCsv(rows){
     }
     return window.fastspring;
   }
-  function fsOpenChooser(){ // open popup homepage with our 3 products
+  function fsOpenChooser(){ // open popup homepage with our 3 packages
     (async()=>{
       try{
         const fs = await fsWait();
         try{ fs.builder.reset(); }catch{}
-        fs.builder.checkout(); // no items → homepage (Starter/Pro/Agency)
-      }catch(e){
-        console.warn(e);
-        showStatus('Checkout is loading… try again.', 'warn');
-      }
+        fs.builder.checkout(); // no items -> homepage (Starter/Pro/Agency)
+      }catch(e){ console.warn(e); showStatus('Checkout is loading… try again.', 'warn'); }
     })();
   }
   function fsRegisterHandlers(){
@@ -379,39 +338,11 @@ function downloadCsv(rows){
   }
   fsRegisterHandlers();
 
-  // Replace old Buy button behaviour: open chooser
-  if (buyAffBtn){
-    buyAffBtn.addEventListener('click', (e)=>{ e.preventDefault(); fsOpenChooser(); showStatus('Choose a package to continue.', 'warn'); });
+  function ensureCredit(){
+    const g = smtReadGrant();
+    if (!g){ fsOpenChooser(); showStatus('Choose a package to continue.', 'warn'); return false; }
+    return true;
   }
-
-  function normalizeChannel(label){
-    let s=(label||'').toLowerCase().trim();
-    s = s.normalize ? s.normalize('NFD').replace(/[\u0300-\u036f]/g,'') : s;
-    s = s.replace(/[^a-z0-9\-_]+/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
-    if (s.length>24) s=s.slice(0,24);
-    return s;
-  }
-
-  /* ------------ Anti-copy u preview tabeli (samo 1+2) ------------ */
-  (function setupNoCopy(){
-    const tbl = document.getElementById('smtTable');
-    if (!tbl) return;
-
-    document.addEventListener('copy', (e)=>{
-      try{
-        const sel = window.getSelection && window.getSelection();
-        if (!sel || sel.isCollapsed) return;
-        const node = sel.anchorNode;
-        if (node && tbl.contains(node)){
-          e.preventDefault();
-          const msg = 'Preview is masked. Use Export CSV to get full results.';
-          if (e.clipboardData) e.clipboardData.setData('text/plain', msg);
-          else if (window.clipboardData) window.clipboardData.setData('Text', msg);
-          showStatus('Copy disabled in preview. Export CSV for full results.', 'warn');
-        }
-      }catch{ /* no-op */ }
-    }, true);
-  })();
 
   /* ------------ Tooltip za info dugmad (i) — direktni listeneri ------------ */
   
