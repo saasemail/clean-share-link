@@ -30,14 +30,12 @@
     <section class="card">
       <h2 class="card-title">Create channel-tagged affiliate links → CSV</h2>
 
-      <!-- Hero microcopy -->
       <p class="muted small">
         Paste your affiliate URLs and channel labels. SubID Matrix preserves critical affiliate parameters and adds the correct
         per-network SubID (<code>ascsubtag</code> for Amazon, <code>clickref</code> for Awin, <code>sid</code> for CJ, <code>customid</code> for eBay,
         <code>subId</code> for Impact, <code>u1</code> for Rakuten, <code>tid</code> for ClickBank). We also canonicalize Amazon links and remove UTMs.
       </p>
 
-      <!-- Collapsible: Who / Benefits -->
       <input type="checkbox" id="heroCtl" class="collapse-ctl" checked>
       <div class="collapse-body" id="heroBody">
         <div class="grid-two">
@@ -62,7 +60,6 @@
         </div>
       </div>
 
-      <!-- Centered arrow toggle (no text) -->
       <label for="heroCtl" class="collapse-toggle" aria-controls="heroBody" aria-label="Toggle details">
         <span class="arrow" aria-hidden="true"></span>
       </label>
@@ -79,7 +76,6 @@
         </div>
       </div>
 
-      <!-- Inputs -->
       <label for="urlsIn" class="label">Affiliate URLs <span class="dim">(one per line)</span></label>
       <textarea id="urlsIn" class="input" rows="6" placeholder="https://www.amazon.com/dp/ASIN?tag=yourtag-20
 https://go.awin.link/..."></textarea>
@@ -93,7 +89,6 @@ newsletter_aug"></textarea>
         <label class="toggle">
           <input type="checkbox" id="keepUtms" />
           <span>Keep UTM params</span>
-          <!-- info button -->
           <button type="button" class="i-tip" aria-label="What is this?"
                   data-tip="If ON, keeps UTM parameters (utm_source, utm_medium, …) in final URLs. If OFF, SubID Matrix strips UTMs for cleaner links.">
             i
@@ -102,7 +97,6 @@ newsletter_aug"></textarea>
         <label class="toggle">
           <input type="checkbox" id="showAll" />
           <span>Show all rows in preview</span>
-          <!-- info button -->
           <button type="button" class="i-tip" aria-label="What is this?"
                   data-tip="Expands the on-page preview to show more rows (still masked except the first). Export CSV always contains all full URLs.">
             i
@@ -116,11 +110,9 @@ newsletter_aug"></textarea>
       </div>
       <p class="muted small" style="margin-top:6px">Export CSV includes all rows.</p>
 
-      <!-- Status + Summary -->
       <div id="status" class="status" role="status" aria-live="polite" style="margin-top:10px"></div>
       <div id="smtSummary" class="smt-summary muted small"></div>
 
-      <!-- Ultra-clean preview table -->
       <div class="tbl-wrap">
         <table class="tbl" id="smtTable">
           <thead>
@@ -133,7 +125,6 @@ newsletter_aug"></textarea>
         Preview shows only masked URLs. Export reveals all final URLs.
       </div>
 
-      <!-- Supported networks (badges) -->
       <div class="net-strip">
         <span class="net-title">In association with:</span>
         <a class="net-badge" href="https://www.clickbank.com/" target="_blank" rel="noopener">ClickBank</a>
@@ -152,38 +143,65 @@ newsletter_aug"></textarea>
     </footer>
   </main>
 
-  <!-- MODAL: Packages (Starter / Pro / Agency). Ne diramo styles.css — sve inline. -->
-  <div id="pkgModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;align-items:center;justify-content:center;">
-    <div role="dialog" aria-modal="true"
-         style="background:#111;border:1px solid #2a2a2a;border-radius:12px;max-width:560px;width:92%;padding:18px;box-shadow:0 20px 50px rgba(0,0,0,.5);">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px">
-        <h3 style="margin:0;font-size:18px">Choose your package</h3>
-        <button id="pkgClose" class="btn subtle" style="padding:6px 10px">✕</button>
+  <!-- MODERN PRICING MODAL (UI only). Zadržani originalni ID-jevi za JS: pkgModal/pkgClose/pkgStarter/pkgPro/pkgAgency -->
+  <div id="pkgModal" class="modal-overlay" style="display:none;">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pkgTitle">
+      <div class="modal-head">
+        <h3 id="pkgTitle">Choose your package</h3>
+        <button id="pkgClose" class="btn icon" aria-label="Close">✕</button>
       </div>
 
-      <p class="muted small" style="margin:0 0 12px">One-time purchase • one CSV export credit.</p>
+      <p class="muted small" style="margin:0 0 10px">One-time purchase • one CSV export credit.</p>
 
-      <div style="display:grid;gap:10px">
-        <button class="btn" id="pkgStarter"
-                style="display:flex;justify-content:space-between;align-items:center;padding:12px;border:1px solid #2a2a2a;border-radius:10px;background:#161616;">
-          <span><strong>Starter</strong> · up to 10 URLs</span>
-          <span>€3.99</span>
+      <div class="pricing-grid">
+        <!-- STARTER -->
+        <button id="pkgStarter" class="plan-card" aria-label="Choose Starter">
+          <div class="plan-head">
+            <span class="plan-name">Starter</span>
+            <span class="pill">Up to 10 URLs</span>
+          </div>
+          <div class="price">€3.99</div>
+          <ul class="plan-list">
+            <li>1 CSV export credit</li>
+            <li>All networks supported</li>
+            <li>Local-only processing</li>
+          </ul>
+          <div class="plan-cta">Continue</div>
         </button>
-        <button class="btn" id="pkgPro"
-                style="display:flex;justify-content:space-between;align-items:center;padding:12px;border:1px solid #2a2a2a;border-radius:10px;background:#161616;">
-          <span><strong>Pro</strong> · up to 50 URLs</span>
-          <span>€14.99</span>
+
+        <!-- PRO (Most popular) -->
+        <button id="pkgPro" class="plan-card popular" aria-label="Choose Pro">
+          <div class="top-ribbon">Most popular</div>
+          <div class="plan-head">
+            <span class="plan-name">Pro</span>
+            <span class="pill">Up to 50 URLs</span>
+          </div>
+          <div class="price">€14.99</div>
+          <ul class="plan-list">
+            <li>1 CSV export credit</li>
+            <li>All networks + notes</li>
+            <li>Channel normalization</li>
+          </ul>
+          <div class="plan-cta">Continue</div>
         </button>
-        <button class="btn" id="pkgAgency"
-                style="display:flex;justify-content:space-between;align-items:center;padding:12px;border:1px solid #2a2a2a;border-radius:10px;background:#161616;">
-          <span><strong>Agency</strong> · up to 100 URLs</span>
-          <span>€24.99</span>
+
+        <!-- AGENCY -->
+        <button id="pkgAgency" class="plan-card" aria-label="Choose Agency">
+          <div class="plan-head">
+            <span class="plan-name">Agency</span>
+            <span class="pill">Up to 100 URLs</span>
+          </div>
+          <div class="price">€24.99</div>
+          <ul class="plan-list">
+            <li>1 CSV export credit</li>
+            <li>Full CSV schema</li>
+            <li>Optimized for teams</li>
+          </ul>
+          <div class="plan-cta">Continue</div>
         </button>
       </div>
 
-      <div class="muted tiny" style="margin-top:10px">
-        Powered by FastSpring • VAT shown in checkout if applicable.
-      </div>
+      <p class="tiny dim" style="margin-top:10px">Powered by FastSpring • VAT shown in checkout if applicable.</p>
     </div>
   </div>
 
