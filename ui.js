@@ -1,4 +1,5 @@
 // SubID Matrix — ultra-clean table preview (one full row, others masked). Credits + FastSpring intact.
+// Dodato: modal sa paketima + vezivanje na Unlock/Export ako nema kredita. SMT skusevi dodaju +1 kredit.
 
 (function(){
   const el = (id) => document.getElementById(id);
@@ -17,6 +18,13 @@
   const smtSummary   = el('smtSummary');
   const smtHint      = el('smtHint');
   const smtTbody     = el('smtTbody');
+
+  // Modal (novo)
+  const pkgModal   = el('pkgModal');
+  const pkgClose   = el('pkgClose');
+  const pkgStarter = el('pkgStarter');
+  const pkgPro     = el('pkgPro');
+  const pkgAgency  = el('pkgAgency');
 
   // Credits
   const AFF_CREDITS_KEY = 'csl_aff_credits';
@@ -237,18 +245,16 @@
     showStatus('Analyze ready.', 'ok');
   }
 
-  // If nema kredita → odmah otvori FS popup (homepage) i vrati false
+  // === MODAL logika (novo) ===
+  function showPackages(){ if(pkgModal) pkgModal.style.display='flex'; }
+  function hidePackages(){ if(pkgModal) pkgModal.style.display='none'; }
+
+  // Ako nema kredita – otvori modal i prekini export
   function ensureCredit(){
-    const n = readAff(); 
+    const n = readAff();
     if (n>0) return true;
-    (async()=>{
-      try{
-        const fs = await waitForFS(6000);
-        try{ fs.builder.reset(); }catch{}
-        fs.builder.checkout(); // HOME (Starter / Pro / Agency)
-        showStatus('Choose a package to continue.', 'warn');
-      }catch(e){ console.warn(e); showStatus('Checkout is loading… try again shortly.', 'warn'); }
-    })();
+    showPackages();
+    showStatus('Choose a package to continue.', 'warn');
     return false;
   }
 
@@ -273,18 +279,19 @@
     const urls = getUrlLines(), ch = getLines(channelsIn);
     if (!urls.length) { showStatus('Add URLs.', 'err'); return; }
     if (!ch.length)   { showStatus('Add channels.', 'err'); return; }
-    if (!ensureCredit()) return; // ako nema kredita, otvori popup i prekini
+    if (!ensureCredit()) return;
     const rows = buildMatrix(urls, ch, !!keepUtms?.checked);
     if (!rows.length){ showStatus('Nothing to export.', 'err'); return; }
     downloadCsv(rows);
     writeAff(readAff()-1);
+    hidePackages();
     showStatus(`SubID CSV exported • –1 credit • ${rows.length} rows`, 'ok');
   }
 
   if (analyzeBtn) analyzeBtn.addEventListener('click', analyze);
   if (exportBtn)  exportBtn.addEventListener('click', exportCsv);
 
-  // FastSpring glue — HOME popup + kredit po kupovini (SMT-* ili AFF*)
+  // FastSpring glue (postojeći AFF1/AFF5/AFF20) + dodati SMT-STARTER/SMT-PRO/SMT-AGENCY
   async function waitForFS(ms=4000){
     const t0=Date.now();
     while(!window.fastspring || !window.fastspring.builder){
@@ -300,12 +307,11 @@
         const items = (evt.items || evt.data?.items || evt.events?.[0]?.data?.items) || [];
         for (const it of items){
           const sku = String(it.path || it.product || it.sku || it.display || it.id || '').toLowerCase();
-          // stari SKU-ovi (ako ih imaš)
           if (/^aff1$/.test(sku))  writeAff(readAff()+1);
           if (/^aff5$/.test(sku))  writeAff(readAff()+5);
           if (/^aff20$/.test(sku)) writeAff(readAff()+20);
-          // novi paketi — jedan export kredit po kupovini
-          if (/^smt\-starter$/.test(sku) || /^smt\-pro$/.test(sku) || /^smt\-agency$/.test(sku)){
+          if (/^smt\-starter$/.test(sku) || /^smt\-pro$/.test(sku) || /^smt\-agency$/.test(sku)) {
+            // svaki SMT paket = 1 kredit (pay-per-export)
             writeAff(readAff()+1);
           }
         }
@@ -313,18 +319,36 @@
     };
     ['purchased','completed','complete','order.completed','checkout.completed'].forEach(n=>{ try{ fs.builder.on(n, handler); }catch{} });
   }
+
+  // Unlock dugme sada samo prikazuje modal (ne dodaje ništa u korpu automatski)
   if (buyAffBtn){
-    buyAffBtn.addEventListener('click', async ()=>{
-      try{
-        const fs = await waitForFS(6000);
-        registerFSEvents(fs);
-        try{ fs.builder.reset(); }catch{}
-        // NE dodajemo artikle → otvaramo HOME s paketima
-        fs.builder.checkout();
-        showStatus('Choose a package to continue.', 'warn');
-      }catch(e){ console.warn(e); showStatus('Checkout is loading… try again shortly.', 'warn'); }
+    buyAffBtn.addEventListener('click', ()=>{
+      showPackages();
+      showStatus('Choose a package to continue.', 'warn');
     });
   }
+
+  // Modal handlers (klik na paket doda SKU i otvara FS checkout)
+  async function addAndCheckout(sku){
+    try{
+      const fs = await waitForFS();
+      registerFSEvents(fs);
+      try{ fs.builder.reset(); }catch{}
+      fs.builder.add({ product: sku, quantity: 1 });
+      fs.builder.checkout();
+    }catch(e){
+      console.warn(e);
+      showStatus('Checkout is loading… try again shortly.', 'warn');
+    }
+  }
+  if (pkgStarter) pkgStarter.addEventListener('click', ()=> addAndCheckout('SMT-STARTER'));
+  if (pkgPro)     pkgPro.addEventListener('click',     ()=> addAndCheckout('SMT-PRO'));
+  if (pkgAgency)  pkgAgency.addEventListener('click',  ()=> addAndCheckout('SMT-AGENCY'));
+
+  if (pkgClose)   pkgClose.addEventListener('click',   hidePackages);
+  if (pkgModal)   pkgModal.addEventListener('click', (e)=>{ if(e.target===pkgModal) hidePackages(); });
+
+  // Pre-subscribe FS evente kad je skripta spremna (non-blocking)
   (async()=>{ try{ const fs=await waitForFS(6000); registerFSEvents(fs);}catch{} })();
 
   // Channel normalize
@@ -462,4 +486,13 @@
       window.visualViewport.addEventListener('resize', reposition);
     }
   })();
+
+  // Channel normalize
+  function normalizeChannel(label){
+    let s=(label||'').toLowerCase().trim();
+    s = s.normalize ? s.normalize('NFD').replace(/[\u0300-\u036f]/g,'') : s;
+    s = s.replace(/[^a-z0-9\-_]+/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
+    if (s.length>24) s=s.slice(0,24);
+    return s;
+  }
 })();

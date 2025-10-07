@@ -12,7 +12,7 @@
     id="fsc-api"
     src="https://sbl.onfastspring.com/sbl/1.0.5/fastspring-builder.min.js"
     type="text/javascript"
-    data-storefront="cleansharelink.test.onfastspring.com/popup-subidmx">
+    data-storefront="cleansharelink.test.onfastspring.com/popup-cleansharelink">
   </script>
 </head>
 <body>
@@ -151,6 +151,41 @@ newsletter_aug"></textarea>
       <span>TRUSTED BY 8000+ USERS</span>
     </footer>
   </main>
+
+  <!-- MODAL: Packages (Starter / Pro / Agency). Ne diramo styles.css — sve inline. -->
+  <div id="pkgModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;align-items:center;justify-content:center;">
+    <div role="dialog" aria-modal="true"
+         style="background:#111;border:1px solid #2a2a2a;border-radius:12px;max-width:560px;width:92%;padding:18px;box-shadow:0 20px 50px rgba(0,0,0,.5);">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px">
+        <h3 style="margin:0;font-size:18px">Choose your package</h3>
+        <button id="pkgClose" class="btn subtle" style="padding:6px 10px">✕</button>
+      </div>
+
+      <p class="muted small" style="margin:0 0 12px">One-time purchase • one CSV export credit.</p>
+
+      <div style="display:grid;gap:10px">
+        <button class="btn" id="pkgStarter"
+                style="display:flex;justify-content:space-between;align-items:center;padding:12px;border:1px solid #2a2a2a;border-radius:10px;background:#161616;">
+          <span><strong>Starter</strong> · up to 10 URLs</span>
+          <span>€3.99</span>
+        </button>
+        <button class="btn" id="pkgPro"
+                style="display:flex;justify-content:space-between;align-items:center;padding:12px;border:1px solid #2a2a2a;border-radius:10px;background:#161616;">
+          <span><strong>Pro</strong> · up to 50 URLs</span>
+          <span>€14.99</span>
+        </button>
+        <button class="btn" id="pkgAgency"
+                style="display:flex;justify-content:space-between;align-items:center;padding:12px;border:1px solid #2a2a2a;border-radius:10px;background:#161616;">
+          <span><strong>Agency</strong> · up to 100 URLs</span>
+          <span>€24.99</span>
+        </button>
+      </div>
+
+      <div class="muted tiny" style="margin-top:10px">
+        Powered by FastSpring • VAT shown in checkout if applicable.
+      </div>
+    </div>
+  </div>
 
   <script src="ui.js"></script>
 </body>
