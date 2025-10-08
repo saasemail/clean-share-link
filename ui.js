@@ -276,12 +276,12 @@
   if (pkgClose)   pkgClose.addEventListener('click', hidePackages);
   if (pkgModal)   pkgModal.addEventListener('click', (e)=>{ if(e.target===pkgModal) hidePackages(); });
 
-  // ===== FastSpring glue =====
-  async function waitForFS(ms=6000){
+  // ===== FastSpring glue (ispravka: koristimo "path" + direktni checkout products) =====
+  async function waitForFS(ms=8000){
     const t0=Date.now();
     while(!window.fastspring || !window.fastspring.builder){
       if(Date.now()-t0>ms) throw new Error('FastSpring not loaded');
-      await new Promise(r=>setTimeout(r,30));
+      await new Promise(r=>setTimeout(r,40));
     }
     return window.fastspring;
   }
@@ -302,15 +302,31 @@
       }catch{}
     };
     ['purchased','completed','complete','order.completed','checkout.completed'].forEach(n=>{ try{ fs.builder.on(n, handler); }catch{} });
+    try{ fs.builder.on('checkout.error', ()=> showStatus('Checkout error — try again.', 'err')); }catch{}
   }
 
   async function addAndCheckout(sku){
     try{
       const fs = await waitForFS();
       registerFSEvents(fs);
+
+      // Čišćenje korpe (ako postoji)
       try{ fs.builder.reset(); }catch{}
-      fs.builder.add({ product: sku, quantity: 1 });
-      fs.builder.checkout();
+
+      // VARIJANTA A: dodaj pa otvori
+      try{
+        fs.builder.add({ path: sku, quantity: 1 }); // <— ispravka: path umesto product
+        fs.builder.checkout();
+        return;
+      }catch{}
+
+      // VARIJANTA B: direktno kroz checkout sa products listom
+      try{
+        fs.builder.checkout({ products: [{ path: sku, quantity: 1 }] });
+        return;
+      }catch{}
+
+      showStatus('Checkout is loading… try again shortly.', 'warn');
     }catch(e){
       console.warn(e);
       showStatus('Checkout is loading… try again shortly.', 'warn');
@@ -321,7 +337,7 @@
   if (pkgPro)     pkgPro.addEventListener('click',     ()=> addAndCheckout('SMT-PRO'));
   if (pkgAgency)  pkgAgency.addEventListener('click',  ()=> addAndCheckout('SMT-AGENCY'));
 
-  // Pre-subscribe na FS evente čim se skripta pojavi (non-blocking, tiho)
+  // Pre-subscribe na FS evente čim se skripta pojavi (tiho)
   (async()=>{ try{ const fs=await waitForFS(); registerFSEvents(fs);}catch{} })();
 
   // Tooltips za “i” (mobilni + desktop)
