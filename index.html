@@ -12,7 +12,7 @@
     id="fsc-api"
     src="https://sbl.onfastspring.com/sbl/1.0.5/fastspring-builder.min.js"
     type="text/javascript"
-    data-storefront="cleansharelink.test.onfastspring.com/popup-cleansharelink">
+    data-storefront="cleansharelink.test.onfastspring.com/popup-subidmx">
   </script>
 </head>
 <body>
@@ -143,7 +143,7 @@ newsletter_aug"></textarea>
     </footer>
   </main>
 
-  <!-- MODERN PRICING MODAL (UI only). Zadržani originalni ID-jevi za JS: pkgModal/pkgClose/pkgStarter/pkgPro/pkgAgency -->
+  <!-- Pricing modal -->
   <div id="pkgModal" class="modal-overlay" style="display:none;">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pkgTitle">
       <div class="modal-head">
@@ -154,49 +154,25 @@ newsletter_aug"></textarea>
       <p class="muted small" style="margin:0 0 10px">One-time purchase • one CSV export credit.</p>
 
       <div class="pricing-grid">
-        <!-- STARTER -->
         <button id="pkgStarter" class="plan-card" aria-label="Choose Starter">
-          <div class="plan-head">
-            <span class="plan-name">Starter</span>
-            <span class="pill">Up to 10 URLs</span>
-          </div>
+          <div class="plan-head"><span class="plan-name">Starter</span><span class="pill">Up to 10 URLs</span></div>
           <div class="price">€3.99</div>
-          <ul class="plan-list">
-            <li>1 CSV export credit</li>
-            <li>All networks supported</li>
-            <li>Local-only processing</li>
-          </ul>
+          <ul class="plan-list"><li>1 CSV export credit</li><li>All networks supported</li><li>Local-only processing</li></ul>
           <div class="plan-cta">Continue</div>
         </button>
 
-        <!-- PRO (Most popular) -->
         <button id="pkgPro" class="plan-card popular" aria-label="Choose Pro">
           <div class="top-ribbon">Most popular</div>
-          <div class="plan-head">
-            <span class="plan-name">Pro</span>
-            <span class="pill">Up to 50 URLs</span>
-          </div>
+          <div class="plan-head"><span class="plan-name">Pro</span><span class="pill">Up to 50 URLs</span></div>
           <div class="price">€14.99</div>
-          <ul class="plan-list">
-            <li>1 CSV export credit</li>
-            <li>All networks + notes</li>
-            <li>Channel normalization</li>
-          </ul>
+          <ul class="plan-list"><li>1 CSV export credit</li><li>All networks + notes</li><li>Channel normalization</li></ul>
           <div class="plan-cta">Continue</div>
         </button>
 
-        <!-- AGENCY -->
         <button id="pkgAgency" class="plan-card" aria-label="Choose Agency">
-          <div class="plan-head">
-            <span class="plan-name">Agency</span>
-            <span class="pill">Up to 100 URLs</span>
-          </div>
+          <div class="plan-head"><span class="plan-name">Agency</span><span class="pill">Up to 100 URLs</span></div>
           <div class="price">€24.99</div>
-          <ul class="plan-list">
-            <li>1 CSV export credit</li>
-            <li>Full CSV schema</li>
-            <li>Optimized for teams</li>
-          </ul>
+          <ul class="plan-list"><li>1 CSV export credit</li><li>Full CSV schema</li><li>Optimized for teams</li></ul>
           <div class="plan-cta">Continue</div>
         </button>
       </div>
