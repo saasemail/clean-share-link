@@ -276,24 +276,22 @@
   if (pkgClose)   pkgClose.addEventListener('click', hidePackages);
   if (pkgModal)   pkgModal.addEventListener('click', (e)=>{ if(e.target===pkgModal) hidePackages(); });
 
-  // ===== FastSpring glue (ispravka: koristimo "path" + direktni checkout products) =====
-  async function waitForFS(ms=8000){
-    const t0=Date.now();
-    while(!window.fastspring || !window.fastspring.builder){
-      if(Date.now()-t0>ms) throw new Error('FastSpring not loaded');
-      await new Promise(r=>setTimeout(r,40));
-    }
-    return window.fastspring;
-  }
-  function registerFSEvents(fs){
-    if (!fs || !fs.builder || !fs.builder.on) return;
+  // ===== FastSpring glue (SINHRONO na klik — bez await u handleru) =====
+
+  // flagovi
+  let fsReady = false;
+  let fsEventsWired = false;
+  let fsPollTimer = null;
+
+  function wireFSEvents(fs){
+    if (fsEventsWired || !fs || !fs.builder || !fs.builder.on) return;
+    fsEventsWired = true;
     const handler = (evt)=>{
       try{
         const items = (evt.items || evt.data?.items || evt.events?.[0]?.data?.items) || [];
         for (const it of items){
           const sku = String(it.path || it.product || it.sku || it.display || it.id || '').toLowerCase();
           if (/^smt\-starter$/.test(sku) || /^smt\-pro$/.test(sku) || /^smt\-agency$/.test(sku)) {
-            // Svaki SMT paket = 1 kredit
             writeAff(readAff()+1);
             showStatus('Purchase completed • +1 credit', 'ok');
             hidePackages();
@@ -305,40 +303,60 @@
     try{ fs.builder.on('checkout.error', ()=> showStatus('Checkout error — try again.', 'err')); }catch{}
   }
 
-  async function addAndCheckout(sku){
+  // lagano poll-ovanje u pozadini da ranije postavimo fsReady (bez await u klikovima)
+  (function prewarmFS(){
+    const start = Date.now();
+    (function tick(){
+      if (window.fastspring && window.fastspring.builder){
+        fsReady = true;
+        wireFSEvents(window.fastspring);
+        return;
+      }
+      if (Date.now() - start > 12000) return; // prestani posle 12s
+      fsPollTimer = setTimeout(tick, 60);
+    })();
+  })();
+
+  function tryCheckoutNow(sku){
+    const fs = window.fastspring;
+    if (!fs || !fs.builder) return false;
+    wireFSEvents(fs);
+    try{ fs.builder.reset(); }catch{}
+    // Varijanta A: add + checkout
     try{
-      const fs = await waitForFS();
-      registerFSEvents(fs);
-
-      // Čišćenje korpe (ako postoji)
-      try{ fs.builder.reset(); }catch{}
-
-      // VARIJANTA A: dodaj pa otvori
-      try{
-        fs.builder.add({ path: sku, quantity: 1 }); // <— ispravka: path umesto product
-        fs.builder.checkout();
-        return;
-      }catch{}
-
-      // VARIJANTA B: direktno kroz checkout sa products listom
-      try{
-        fs.builder.checkout({ products: [{ path: sku, quantity: 1 }] });
-        return;
-      }catch{}
-
-      showStatus('Checkout is loading… try again shortly.', 'warn');
-    }catch(e){
-      console.warn(e);
-      showStatus('Checkout is loading… try again shortly.', 'warn');
-    }
+      fs.builder.add({ path: sku, quantity: 1 });
+      // Zatvori naš modal pre FS overlaya da izbegnemo z-index konflikte
+      hidePackages();
+      fs.builder.checkout();
+      return true;
+    }catch{}
+    // Varijanta B: direktno products list
+    try{
+      hidePackages();
+      fs.builder.checkout({ products: [{ path: sku, quantity: 1 }] });
+      return true;
+    }catch{}
+    return false;
   }
 
-  if (pkgStarter) pkgStarter.addEventListener('click', ()=> addAndCheckout('SMT-STARTER'));
-  if (pkgPro)     pkgPro.addEventListener('click',     ()=> addAndCheckout('SMT-PRO'));
-  if (pkgAgency)  pkgAgency.addEventListener('click',  ()=> addAndCheckout('SMT-AGENCY'));
+  function queuedCheckout(sku){
+    // Pokušaj odmah (sinhrono u okviru user-gesta)
+    if (tryCheckoutNow(sku)) return;
 
-  // Pre-subscribe na FS evente čim se skripta pojavi (tiho)
-  (async()=>{ try{ const fs=await waitForFS(); registerFSEvents(fs);}catch{} })();
+    // Ako FS još nije spreman, prikaži poruku i kreni kratko da poll-uješ do 6s
+    showStatus('Loading checkout…', 'warn');
+    const start = Date.now();
+    const loop = ()=>{
+      if (tryCheckoutNow(sku)) { showStatus('', ''); return; }
+      if (Date.now() - start > 6000){ showStatus('Checkout is loading… try again shortly.', 'warn'); return; }
+      setTimeout(loop, 80);
+    };
+    loop();
+  }
+
+  if (pkgStarter) pkgStarter.addEventListener('click', ()=> queuedCheckout('SMT-STARTER'));
+  if (pkgPro)     pkgPro.addEventListener('click',     ()=> queuedCheckout('SMT-PRO'));
+  if (pkgAgency)  pkgAgency.addEventListener('click',  ()=> queuedCheckout('SMT-AGENCY'));
 
   // Tooltips za “i” (mobilni + desktop)
   (function setupInfoTooltips(){
